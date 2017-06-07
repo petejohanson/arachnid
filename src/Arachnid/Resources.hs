@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Arachnid.Types
+module Arachnid.Resources
 ( ResourceMonad
 , Resource
 , serviceAvailable
 , knownMethods
 , requestURITooLong
 , allowedMethods
+, malformedRequest
+, authorized
 , Responsible
 , toResponse
 ) where
@@ -36,7 +38,7 @@ class Resource a where
     ]
 
   requestURITooLong :: a -> ResourceMonad Bool
-  requestURITooLong _ = return False
+  requestURITooLong = const $ return False
 
   allowedMethods :: a -> ResourceMonad [HTTP.Method]
   allowedMethods = const $ return
@@ -44,6 +46,12 @@ class Resource a where
     , "HEAD"
     , "OPTIONS"
     ]
+
+  malformedRequest :: a -> ResourceMonad Bool
+  malformedRequest = const $ return False
+
+  authorized :: a -> ResourceMonad Bool
+  authorized = const $ return True
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

@@ -1,23 +1,43 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, ExistentialQuantification #-}
 
 module Arachnid.Routing
 ( match
 , (</>)
+, (<:>)
+, RoutableResource
+, resourceRoute
 , Route
-, RouteElement (Segment, Capture, Rest)
+, RouteElement (Root, Segment, Capture, Rest)
 , RouteMatch
 , RouteMatchElement (SegmentMatch, CaptureMatch, RestMatch)
 , routeMatchCaptures
 ) where
 
+import Arachnid.Resources
 import Data.Text (Text, pack)
 
-data RouteElement = Segment String | Capture String | Rest deriving (Show)
+data RoutableResource = forall a. Resource a => RoutableResource a Route
+
+instance Resource RoutableResource where
+  serviceAvailable (RoutableResource a _) = serviceAvailable a
+  knownMethods (RoutableResource a _) = knownMethods a
+  allowedMethods (RoutableResource a _) = allowedMethods a
+  requestURITooLong (RoutableResource a _) = requestURITooLong a
+  authorized (RoutableResource a _) = authorized a
+  malformedRequest (RoutableResource a _) = malformedRequest a
+
+(<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
+(<:>) route res = RoutableResource res (toRouteElements route)
+
+resourceRoute :: RoutableResource -> Route
+resourceRoute (RoutableResource _ route) = route
+
+data RouteElement = Root | Segment String | Capture String | Rest deriving (Show)
 
 type Route = [RouteElement]
 
 data RouteMatch = RouteMatch { elements :: [RouteMatchElement] } deriving (Show)
-data RouteMatchElement = SegmentMatch Text | CaptureMatch String Text | RestMatch [Text] deriving (Show)
+data RouteMatchElement = RootMatch | SegmentMatch Text | CaptureMatch String Text | RestMatch [Text] deriving (Show)
 
 routeMatchCaptures :: RouteMatch -> [(String, Text)]
 routeMatchCaptures=
@@ -33,6 +53,8 @@ match' Nothing _ = Nothing
 match' (Just (p, m)) e = (\(r, n) ->  (r, m ++ [n])) `fmap` matchElement e p
 
 matchElement :: RouteElement -> [Text] -> Maybe ([Text], RouteMatchElement)
+matchElement Root [] = Just([], RootMatch)
+matchElement Root _ = Nothing
 matchElement (Segment s) (x:xs) = if pack s == x then Just (xs, SegmentMatch x) else Nothing
 matchElement (Capture s) (x:xs) = Just (xs, CaptureMatch s x)
 matchElement Rest path = Just ([], RestMatch path)

@@ -6,18 +6,18 @@ module Arachnid
 
 import Arachnid.Decisions
 import Arachnid.Routing
-import Arachnid.Types
+import Arachnid.Resources
 
 import Control.Monad.Trans.Resource
 
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as W
 
-makeApp :: (Resource a) => [(Route, a)] -> W.Application
+makeApp :: [RoutableResource] -> W.Application
 makeApp [] _ respond = respond $ W.responseLBS HTTP.notFound404 [] "Not Found"
 makeApp (r:rs) req respond =
-  case match (fst r) path of
-    Just _  -> runHandler (snd r) req respond
+  case match (resourceRoute r) path of
+    Just _  -> runHandler r req respond
     Nothing -> makeApp rs req respond
   where path = W.pathInfo req
 
