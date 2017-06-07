@@ -36,7 +36,7 @@ class Resource a where
     ]
 
   requestURITooLong :: a -> ResourceMonad Bool
-  requestURITooLong _ = return True
+  requestURITooLong _ = return False
 
   allowedMethods :: a -> ResourceMonad [HTTP.Method]
   allowedMethods = const $ return
