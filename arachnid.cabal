@@ -42,7 +42,6 @@ test-suite spec
   build-depends:       arachnid
                      , text
                      , hspec == 2.*
-                     , hpc-coveralls
   default-language:    Haskell2010
 
 executable helloWorld
