@@ -3,12 +3,14 @@
 module Arachnid.Routing
 ( match
 , (</>)
-, RouteElement (Route, Segment, Capture, Rest)
+, RouteElement (Segment, Capture, Rest)
 , RouteMatch
 , routeMatchCaptures
 ) where
 
-data RouteElement = Route [RouteElement] | Segment String | Capture String | Rest deriving (Show)
+data RouteElement = Segment String | Capture String | Rest deriving (Show)
+
+type Route = [RouteElement]
 
 data RouteMatch = RouteMatch { elements :: [RouteMatchElement] } deriving (Show)
 data RouteMatchElement = StaticPath String | PathCapture String String | RestPath [String] deriving (Show)
@@ -19,22 +21,29 @@ routeMatchCaptures=
   where isPathCapture (PathCapture _ _) = True
         isPathCapture _ = False
 
-match :: RouteElement -> String -> Maybe RouteMatch
-match = const $ const Nothing
+match :: Route -> [String] -> Maybe RouteMatch
+match r p = (\m -> RouteMatch { elements = snd m }) `fmap` foldl match' (Just (p, [])) r
+
+match' :: Maybe ([String], [RouteMatchElement]) -> RouteElement -> Maybe ([String], [RouteMatchElement])
+match' Nothing _ = Nothing
+match' (Just (p, m)) e = (\(r, n) ->  (r, m ++ [n])) `fmap` matchElement e p
+
+matchElement :: RouteElement -> [String] -> Maybe ([String], RouteMatchElement)
+matchElement (Segment s) (x:xs) = if s == x then Just (xs, StaticPath s) else Nothing
+matchElement (Capture s) (x:xs) = Just (xs, PathCapture s x)
+matchElement Rest path = Just ([], RestPath path)
+matchElement _ [] = Nothing
 
 class RouteCapture a where
   toRouteElements :: a -> [RouteElement]
-  (</>) :: (RouteCapture b) => a -> b -> RouteElement
-  (</>) a b = Route (toRouteElements a ++ toRouteElements b)
+  (</>) :: (RouteCapture b) => a -> b -> [RouteElement]
+  (</>) a b = toRouteElements a ++ toRouteElements b
+
+instance RouteCapture Route where
+  toRouteElements r = r
 
 instance RouteCapture RouteElement where
-  toRouteElements (Route routes) = routes
   toRouteElements other = [other]
-  (</>) (Route routes) other = Route (routes ++ toRouteElements other)
-  (</>) element other = Route (element : toRouteElements other)
 
 instance RouteCapture String where
   toRouteElements s = [Segment s]
-
-route :: RouteElement
-route = "test" </> Capture "bar"
