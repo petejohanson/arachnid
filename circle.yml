@@ -5,5 +5,5 @@ test:
   override:
     - cabal test
   post:
-    - cabal install hps-coveralls
+    - cabal install hpc-coveralls
     - hpc-coveralls spec
