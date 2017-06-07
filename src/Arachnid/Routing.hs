@@ -3,34 +3,37 @@
 module Arachnid.Routing
 ( match
 , (</>)
+, Route
 , RouteElement (Segment, Capture, Rest)
 , RouteMatch
 , RouteMatchElement (SegmentMatch, CaptureMatch, RestMatch)
 , routeMatchCaptures
 ) where
 
+import Data.Text (Text, pack)
+
 data RouteElement = Segment String | Capture String | Rest deriving (Show)
 
 type Route = [RouteElement]
 
 data RouteMatch = RouteMatch { elements :: [RouteMatchElement] } deriving (Show)
-data RouteMatchElement = SegmentMatch String | CaptureMatch String String | RestMatch [String] deriving (Show)
+data RouteMatchElement = SegmentMatch Text | CaptureMatch String Text | RestMatch [Text] deriving (Show)
 
-routeMatchCaptures :: RouteMatch -> [(String, String)]
+routeMatchCaptures :: RouteMatch -> [(String, Text)]
 routeMatchCaptures=
   map (\(CaptureMatch name value) -> (name, value)) . filter isPathCapture . elements
   where isPathCapture (CaptureMatch _ _) = True
         isPathCapture _ = False
 
-match :: Route -> [String] -> Maybe RouteMatch
+match :: Route -> [Text] -> Maybe RouteMatch
 match r p = (\m -> RouteMatch { elements = snd m }) `fmap` foldl match' (Just (p, [])) r
 
-match' :: Maybe ([String], [RouteMatchElement]) -> RouteElement -> Maybe ([String], [RouteMatchElement])
+match' :: Maybe ([Text], [RouteMatchElement]) -> RouteElement -> Maybe ([Text], [RouteMatchElement])
 match' Nothing _ = Nothing
 match' (Just (p, m)) e = (\(r, n) ->  (r, m ++ [n])) `fmap` matchElement e p
 
-matchElement :: RouteElement -> [String] -> Maybe ([String], RouteMatchElement)
-matchElement (Segment s) (x:xs) = if s == x then Just (xs, SegmentMatch s) else Nothing
+matchElement :: RouteElement -> [Text] -> Maybe ([Text], RouteMatchElement)
+matchElement (Segment s) (x:xs) = if pack s == x then Just (xs, SegmentMatch x) else Nothing
 matchElement (Capture s) (x:xs) = Just (xs, CaptureMatch s x)
 matchElement Rest path = Just ([], RestMatch path)
 matchElement _ [] = Nothing
