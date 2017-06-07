@@ -5,6 +5,7 @@ module Arachnid.Routing
 , (</>)
 , RouteElement (Segment, Capture, Rest)
 , RouteMatch
+, RouteMatchElement (SegmentMatch, CaptureMatch, RestMatch)
 , routeMatchCaptures
 ) where
 
@@ -13,12 +14,12 @@ data RouteElement = Segment String | Capture String | Rest deriving (Show)
 type Route = [RouteElement]
 
 data RouteMatch = RouteMatch { elements :: [RouteMatchElement] } deriving (Show)
-data RouteMatchElement = StaticPath String | PathCapture String String | RestPath [String] deriving (Show)
+data RouteMatchElement = SegmentMatch String | CaptureMatch String String | RestMatch [String] deriving (Show)
 
 routeMatchCaptures :: RouteMatch -> [(String, String)]
 routeMatchCaptures=
-  map (\(PathCapture name value) -> (name, value)) . filter isPathCapture . elements
-  where isPathCapture (PathCapture _ _) = True
+  map (\(CaptureMatch name value) -> (name, value)) . filter isPathCapture . elements
+  where isPathCapture (CaptureMatch _ _) = True
         isPathCapture _ = False
 
 match :: Route -> [String] -> Maybe RouteMatch
@@ -29,9 +30,9 @@ match' Nothing _ = Nothing
 match' (Just (p, m)) e = (\(r, n) ->  (r, m ++ [n])) `fmap` matchElement e p
 
 matchElement :: RouteElement -> [String] -> Maybe ([String], RouteMatchElement)
-matchElement (Segment s) (x:xs) = if s == x then Just (xs, StaticPath s) else Nothing
-matchElement (Capture s) (x:xs) = Just (xs, PathCapture s x)
-matchElement Rest path = Just ([], RestPath path)
+matchElement (Segment s) (x:xs) = if s == x then Just (xs, SegmentMatch s) else Nothing
+matchElement (Capture s) (x:xs) = Just (xs, CaptureMatch s x)
+matchElement Rest path = Just ([], RestMatch path)
 matchElement _ [] = Nothing
 
 class RouteCapture a where
