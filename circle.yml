@@ -1,9 +1,9 @@
 test:
   pre:
-    - cabal install codecov-haskell
     - cabal configure --enable-tests --enable-library-coverage
     - cabal build
   override:
     - cabal test
   post:
-    - codecov-haskell spec
+    - cabal install hps-coveralls
+    - hpc-coveralls spec
