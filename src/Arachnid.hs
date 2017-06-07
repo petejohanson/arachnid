@@ -8,7 +8,6 @@ import Arachnid.Types
 
 import Control.Monad.Trans.Resource
 
-import qualified Network.HTTP.Types as HTTP
 import qualified Network.Wai as W
 
 makeApp :: (Resource a) => [(Route, a)] -> W.Application

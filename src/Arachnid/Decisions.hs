@@ -7,7 +7,6 @@ module Arachnid.Decisions
 
 import Control.Monad.Reader
 import Control.Monad.Trans.Resource
-import Control.Monad.Writer
 import Arachnid.Types
 import Data.List
 import qualified Data.ByteString as BS
@@ -35,8 +34,8 @@ v3b11 res = decisionBranch (requestURITooLong res) (\_ -> toResponse HTTP.reques
 
 data AllowedMethods = AllowedMethods [HTTP.Method]
 instance Responsible AllowedMethods where
-  toResponse (AllowedMethods allowedMethods) =
-    return $ Wai.responseLBS HTTP.methodNotAllowed405 [("Allow", BS.concat $ intersperse "," allowedMethods)] ""
+  toResponse (AllowedMethods allowed) =
+    return $ Wai.responseLBS HTTP.methodNotAllowed405 [("Allow", BS.concat $ intersperse "," allowed)] ""
 
 v3b10 :: Decision
 v3b10 res = do
