@@ -1,6 +1,6 @@
 machine:
   ghc:
-    version: 7.8.3
+    version: 7.10
 
 test:
   pre:
@@ -9,5 +9,4 @@ test:
   override:
     - cabal test
   post:
-    - cabal install hpc-coveralls
-    - hpc-coveralls spec
+    - cabal install hpc-coveralls && hpc-coveralls spec
