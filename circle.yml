@@ -9,4 +9,4 @@ test:
   override:
     - cabal test
   post:
-    - cabal install hpc-coveralls && hpc-coveralls spec
+    - hpc-coveralls spec

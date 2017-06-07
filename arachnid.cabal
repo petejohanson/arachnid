@@ -38,6 +38,7 @@ test-suite spec
   other-modules:       Arachnid.RoutingSpec
   hs-source-dirs:      test
   ghc-options:         -Wall
+  build-tools:         hpc-coveralls
   build-depends:       base >=4.8 && <4.10, mtl >=2.2 && <2.3
   build-depends:       arachnid
                      , text
