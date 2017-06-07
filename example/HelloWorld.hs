@@ -15,4 +15,6 @@ app = makeApp
   ]
 
 main :: IO ()
-main = run 8080 app
+main = do
+  putStrLn "Try http://localhost:8080/hello/world"
+  run 8080 app
