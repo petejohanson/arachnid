@@ -36,8 +36,8 @@ data RouteElement = Root | Segment String | Capture String | Rest deriving (Show
 
 type Route = [RouteElement]
 
-data RouteMatch = RouteMatch { elements :: [RouteMatchElement] } deriving (Show)
-data RouteMatchElement = RootMatch | SegmentMatch Text | CaptureMatch String Text | RestMatch [Text] deriving (Show)
+data RouteMatch = RouteMatch { elements :: [RouteMatchElement] } deriving (Show, Eq)
+data RouteMatchElement = RootMatch | SegmentMatch Text | CaptureMatch String Text | RestMatch [Text] deriving (Show, Eq)
 
 routeMatchCaptures :: RouteMatch -> [(String, Text)]
 routeMatchCaptures=

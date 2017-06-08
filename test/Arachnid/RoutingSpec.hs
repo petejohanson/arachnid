@@ -14,9 +14,7 @@ spec = do
         match [Root] [] `shouldSatisfy` isJust
 
       it "does not match complex routes" $ do
-        let isNothing Nothing = True
-            isNothing _ = False
-        match [Root] [pack "home"] `shouldSatisfy` isNothing
+        match [Root] [pack "home"] `shouldBe` Nothing
 
     describe "A basic string segment" $ do
       it "matches the same string route" $ do
@@ -25,9 +23,7 @@ spec = do
         match [Segment "home"] [pack "home"] `shouldSatisfy` isJust
 
       it "does not match a different string" $ do
-        let isNothing Nothing = True
-            isNothing _ = False
-        match [Segment "home"] [pack "users"] `shouldSatisfy` isNothing
+        match [Segment "home"] [pack "users"] `shouldBe` Nothing
 
     describe "A capture segment" $ do
       it "Captures the value" $ do
