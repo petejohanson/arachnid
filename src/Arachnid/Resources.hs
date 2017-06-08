@@ -22,21 +22,23 @@ import qualified Network.HTTP.Types as HTTP
 
 type ResourceMonad = ReaderT Wai.Request (ResourceT IO)
 
+http_1_1_Methods :: [HTTP.Method]
+http_1_1_Methods = [ "GET"
+                   , "HEAD"
+                   , "POST"
+                   , "PUT"
+                   , "DELETE"
+                   , "CONNECT"
+                   , "OPTIONS"
+                   , "TRACE"
+                   ]
+
 class Resource a where
   serviceAvailable :: a -> ResourceMonad Bool
   serviceAvailable _ = return True
 
   knownMethods :: a -> ResourceMonad [HTTP.Method]
-  knownMethods = const $ return
-    [ "GET"
-    , "HEAD"
-    , "POST"
-    , "PUT"
-    , "DELETE"
-    , "PATCH"
-    , "OPTIONS"
-    , "TRACE"
-    ]
+  knownMethods = const $ return http_1_1_Methods
 
   requestURITooLong :: a -> ResourceMonad Bool
   requestURITooLong = const $ return False
