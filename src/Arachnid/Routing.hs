@@ -8,7 +8,7 @@ module Arachnid.Routing
 , resourceRoute
 , Route
 , RouteElement (Root, Segment, Capture, Rest)
-, RouteMatch
+, RouteMatch (RouteMatch, elements)
 , RouteMatchElement (SegmentMatch, CaptureMatch, RestMatch)
 , routeMatchCaptures
 ) where

@@ -27,6 +27,10 @@ spec = do
 
     describe "A capture segment" $ do
       it "Captures the value" $ do
-        captures `shouldBe` Just [("name", pack "John")]
-        where
+        let
           captures = routeMatchCaptures `fmap` match ("home" </> Capture "name") [pack "home", pack "John"]
+        captures `shouldBe` Just [("name", pack "John")]
+
+    describe "A rest segment" $ do
+      it "captures the remaining path items" $ do
+        match [Rest] [pack "users", pack "123"] `shouldBe` Just RouteMatch { elements = [RestMatch [pack "users", pack "123"]] }
