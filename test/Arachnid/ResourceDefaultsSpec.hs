@@ -40,5 +40,9 @@ spec =
       res `shouldBe` False
 
     it "has knownMethods = HTTP 1.1 Methods" $ do
-          res <- run $ knownMethods TestResource
-          res `shouldMatchList` ["GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT", "OPTIONS"]
+      res <- run $ knownMethods TestResource
+      res `shouldMatchList` ["GET", "HEAD", "POST", "PUT", "DELETE", "TRACE", "CONNECT", "OPTIONS"]
+
+    it "has allowedMethod = ['GET', 'HEAD']" $ do
+      res <- run $ allowedMethods TestResource
+      res `shouldMatchList` ["GET", "HEAD"]

@@ -44,11 +44,7 @@ class Resource a where
   requestURITooLong = const $ return False
 
   allowedMethods :: a -> ResourceMonad [HTTP.Method]
-  allowedMethods = const $ return
-    [ "GET"
-    , "HEAD"
-    , "OPTIONS"
-    ]
+  allowedMethods = const $ return [ "GET", "HEAD" ]
 
   malformedRequest :: a -> ResourceMonad Bool
   malformedRequest = const $ return False
