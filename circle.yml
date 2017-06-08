@@ -9,4 +9,4 @@ test:
   override:
     - cabal test
   post:
-    - cabal install --force-reinstalls hpc-coveralls && .cabal-sandbox/bin/hpc-coveralls --repo-token ${COVERALLS_REPO_TOKEN} spec
+    - cabal sandbox delete && cabal sandbox init && cabal install hpc-coveralls && .cabal-sandbox/bin/hpc-coveralls --repo-token ${COVERALLS_REPO_TOKEN} spec
