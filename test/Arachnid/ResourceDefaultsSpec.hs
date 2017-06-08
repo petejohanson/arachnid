@@ -46,3 +46,16 @@ spec =
     it "has allowedMethod = ['GET', 'HEAD']" $ do
       res <- run $ allowedMethods TestResource
       res `shouldMatchList` ["GET", "HEAD"]
+
+    it "has validContentHeaders = True" $ do
+      res <- run $ validContentHeaders TestResource
+      res `shouldBe` True
+
+    it "has knownContentType = True" $ do
+      res <- run $ knownContentType TestResource
+      res `shouldBe` True
+
+    it "has requestEntityTooLarge = False" $ do
+      res <- run $ requestEntityTooLarge TestResource
+      res `shouldBe` False
+

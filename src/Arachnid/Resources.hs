@@ -10,6 +10,9 @@ module Arachnid.Resources
 , malformedRequest
 , authorized
 , forbidden
+, validContentHeaders
+, knownContentType
+, requestEntityTooLarge
 , Responsible
 , toResponse
 ) where
@@ -54,6 +57,15 @@ class Resource a where
 
   forbidden :: a -> ResourceMonad Bool
   forbidden = const $ return False
+
+  validContentHeaders :: a -> ResourceMonad Bool
+  validContentHeaders = const $ return True
+
+  knownContentType :: a -> ResourceMonad Bool
+  knownContentType = const $ return True
+
+  requestEntityTooLarge :: a -> ResourceMonad Bool
+  requestEntityTooLarge = const $ return False
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

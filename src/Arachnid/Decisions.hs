@@ -53,7 +53,13 @@ v3b8 :: Decision
 v3b8 = decisionBranch authorized v3b7 (const $ toResponse HTTP.unauthorized401)
 
 v3b7 :: Decision
-v3b7 = decisionBranch forbidden (const $ toResponse HTTP.forbidden403) (const $ toResponse HTTP.ok200)
+v3b7 = decisionBranch forbidden (const $ toResponse HTTP.forbidden403) v3b6
+
+v3b6 :: Decision
+v3b6 = decisionBranch validContentHeaders (const $ toResponse HTTP.ok200) (const $ toResponse HTTP.notImplemented501)
+
+v3b5 :: Decision
+v3b5 = decisionBranch knownContentType (const $ toResponse HTTP.ok200) (const $ toResponse HTTP.unsupportedMediaType415)
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =
