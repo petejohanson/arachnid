@@ -36,10 +36,13 @@ test-suite spec
   type:                exitcode-stdio-1.0
   main-is:             Spec.hs
   other-modules:       Arachnid.RoutingSpec
+                     , Arachnid.ResourceDefaultsSpec
   hs-source-dirs:      test
   ghc-options:         -Wall
   build-depends:       base >=4.8 && <4.10, mtl >=2.2 && <2.3
   build-depends:       arachnid
+                     , wai >= 3.0
+                     , resourcet
                      , text
                      , hspec == 2.*
   default-language:    Haskell2010

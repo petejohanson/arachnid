@@ -9,6 +9,7 @@ module Arachnid.Resources
 , allowedMethods
 , malformedRequest
 , authorized
+, forbidden
 , Responsible
 , toResponse
 ) where
@@ -52,6 +53,9 @@ class Resource a where
 
   authorized :: a -> ResourceMonad Bool
   authorized = const $ return True
+
+  forbidden :: a -> ResourceMonad Bool
+  forbidden = const $ return False
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

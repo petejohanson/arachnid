@@ -50,8 +50,10 @@ v3b9 :: Decision
 v3b9 = decisionBranch malformedRequest (const $ toResponse HTTP.badRequest400) v3b8
 
 v3b8 :: Decision
-v3b8 = decisionBranch authorized (const $ toResponse HTTP.ok200) (const $ toResponse HTTP.unauthorized401)
+v3b8 = decisionBranch authorized v3b7 (const $ toResponse HTTP.unauthorized401)
 
+v3b7 :: Decision
+v3b7 = decisionBranch forbidden (const $ toResponse HTTP.forbidden403) (const $ toResponse HTTP.ok200)
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =

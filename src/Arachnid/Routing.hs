@@ -25,6 +25,7 @@ instance Resource RoutableResource where
   requestURITooLong (RoutableResource a _) = requestURITooLong a
   authorized (RoutableResource a _) = authorized a
   malformedRequest (RoutableResource a _) = malformedRequest a
+  forbidden (RoutableResource a _) = forbidden a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)
