@@ -9,4 +9,4 @@ test:
   override:
     - cabal test
   post:
-    - cabal sandbox delete && cabal sandbox init && cabal install hpc-coveralls && .cabal-sandbox/bin/hpc-coveralls spec
+    - cabal install hpc-coveralls --avoid-reinstalls && .cabal-sandbox/bin/hpc-coveralls spec
