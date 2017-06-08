@@ -36,13 +36,13 @@ spec = do
         match [Rest] [pack "users", pack "123"] `shouldBe` Just RouteMatch { elements = [RestMatch [pack "users", pack "123"]] }
 
     describe "a complex route" $ do
-      let route = "users" </> Capture "id"
+      let route = "home" </> "users" </> Capture "id"
 
       it "does not match other paths that differ" $ do
-        match route [pack "posts", pack "123"] `shouldBe` Nothing
+        match route [pack "home", pack "posts", pack "123"] `shouldBe` Nothing
 
       it "Does not do partial matches" $ do
-        match route [pack "users"] `shouldBe` Nothing
+        match route [pack "home", pack "users"] `shouldBe` Nothing
 
       it "matches the expected path" $ do
-        match route [pack "users", pack "123"] `shouldBe` Just RouteMatch { elements = [SegmentMatch $ pack "users", CaptureMatch "id" (pack "123")]}
+        match route [pack "home", pack "users", pack "123"] `shouldBe` Just RouteMatch { elements = [SegmentMatch $ pack "home", SegmentMatch $ pack "users", CaptureMatch "id" (pack "123")]}
