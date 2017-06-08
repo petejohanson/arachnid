@@ -13,6 +13,7 @@ module Arachnid.Resources
 , validContentHeaders
 , knownContentType
 , requestEntityTooLarge
+, options
 , Responsible
 , toResponse
 ) where
@@ -66,6 +67,9 @@ class Resource a where
 
   requestEntityTooLarge :: a -> ResourceMonad Bool
   requestEntityTooLarge = const $ return False
+
+  options :: a -> ResourceMonad HTTP.ResponseHeaders
+  options = const $ return []
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

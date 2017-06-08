@@ -56,10 +56,23 @@ v3b7 :: Decision
 v3b7 = decisionBranch forbidden (const $ toResponse HTTP.forbidden403) v3b6
 
 v3b6 :: Decision
-v3b6 = decisionBranch validContentHeaders (const $ toResponse HTTP.ok200) (const $ toResponse HTTP.notImplemented501)
+v3b6 = decisionBranch validContentHeaders v3b5 (const $ toResponse HTTP.notImplemented501)
 
 v3b5 :: Decision
-v3b5 = decisionBranch knownContentType (const $ toResponse HTTP.ok200) (const $ toResponse HTTP.unsupportedMediaType415)
+v3b5 = decisionBranch knownContentType v3b4 (const $ toResponse HTTP.unsupportedMediaType415)
+
+v3b4 :: Decision
+v3b4 = decisionBranch requestEntityTooLarge (const $ toResponse HTTP.requestEntityTooLarge413) v3b3
+
+v3b3 :: Decision
+v3b3 res = do
+  m <- asks Wai.requestMethod
+
+  case m of
+    "OPTIONS" -> do
+      opts <- options res
+      return $ Wai.responseLBS HTTP.ok200 opts ""
+    _ -> toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =

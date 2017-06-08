@@ -59,3 +59,7 @@ spec =
       res <- run $ requestEntityTooLarge TestResource
       res `shouldBe` False
 
+    it "has options = []" $ do
+      res <- run $ options TestResource
+      res `shouldBe` []
+
