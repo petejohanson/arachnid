@@ -72,7 +72,7 @@ v3b3 res = do
     "OPTIONS" -> do
       opts <- options res
       return $ Wai.responseLBS HTTP.ok200 opts ""
-    _ -> toResponse HTTP.ok200
+    _ -> toResponse HTTP.notImplemented501
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =

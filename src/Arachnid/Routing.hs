@@ -18,6 +18,9 @@ import Data.Text (Text, pack)
 
 data RoutableResource = forall a. Resource a => RoutableResource a Route
 
+instance Show RoutableResource where
+  show (RoutableResource res route) = show route ++ " => " ++ show res
+
 instance Resource RoutableResource where
   serviceAvailable (RoutableResource a _) = serviceAvailable a
   knownMethods (RoutableResource a _) = knownMethods a
@@ -26,6 +29,10 @@ instance Resource RoutableResource where
   authorized (RoutableResource a _) = authorized a
   malformedRequest (RoutableResource a _) = malformedRequest a
   forbidden (RoutableResource a _) = forbidden a
+  requestEntityTooLarge (RoutableResource a _) = requestEntityTooLarge a
+  knownContentType (RoutableResource a _) = knownContentType a
+  validContentHeaders (RoutableResource a _) = validContentHeaders a
+  options (RoutableResource a _) = options a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

@@ -37,7 +37,7 @@ http_1_1_Methods = [ "GET"
                    , "TRACE"
                    ]
 
-class Resource a where
+class (Show a) => Resource a where
   serviceAvailable :: a -> ResourceMonad Bool
   serviceAvailable _ = return True
 
