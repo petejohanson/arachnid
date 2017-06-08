@@ -7,7 +7,7 @@ import Test.Hspec
 import Arachnid.Resources
 import Network.Wai
 
-data TestResource = TestResource
+data TestResource = TestResource deriving (Show)
 instance Resource TestResource
 
 run :: forall (m :: * -> *) a.
