@@ -29,9 +29,9 @@ instance Resource NoAuth where
 
 app :: Application
 app = makeApp
-  [ (Root <:> RootResource)
-  , ("hello" </> "world" <:> HelloWorld)
-  , ("stay" </> "away" <:> NoAuth)
+  [ Root <:> RootResource
+  , "hello" </> "world" <:> HelloWorld
+  , "stay" </> "away" <:> NoAuth
   ]
 
 main :: IO ()
