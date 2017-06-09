@@ -9,8 +9,11 @@ import Control.Monad.Reader
 import Control.Monad.Trans.Resource
 import Arachnid.Resources
 import Data.List
+import Data.Maybe
 import qualified Data.ByteString as BS
+import qualified Network.HTTP.Media as MT
 import qualified Network.HTTP.Types as HTTP
+import qualified Network.HTTP.Types.Header as Header
 import qualified Network.Wai as Wai
 
 type Decision = forall a. (Resource a) => a -> ResourceMonad Wai.Response
@@ -72,7 +75,54 @@ v3b3 res = do
     "OPTIONS" -> do
       opts <- options res
       return $ Wai.responseLBS HTTP.ok200 opts ""
-    _ -> toResponse HTTP.notImplemented501
+    _ -> v3c3 res
+
+decideIfHeader :: (Resource a) => Header.HeaderName -> (BS.ByteString -> Decision) -> Decision -> a -> ResourceMonad Wai.Response
+decideIfHeader header found missing res = do
+  h <- asks Wai.requestHeaders
+
+  case find ((==header) . fst) h of
+    Just a -> found (snd a) res
+    Nothing -> missing res
+
+v3c3 :: Decision
+v3c3 = decideIfHeader Header.hAccept
+                      v3c4
+                      (const $ toResponse HTTP.ok200)
+
+v3c4 :: BS.ByteString -> Decision
+v3c4 a = decisionBranch (\res -> (\types -> isJust $ MT.mapAccept types a) `fmap` contentTypesProvided res)
+                        v3d4
+                        (const $ toResponse HTTP.unsupportedMediaType415)
+
+v3d4 :: Decision
+v3d4 = decideIfHeader Header.hAcceptLanguage
+                      v3d5
+                      v3e5
+
+v3d5 :: BS.ByteString -> Decision
+v3d5 l = decisionBranch (languageAvailable l)
+                        v3e5
+                        (const $ toResponse HTTP.unsupportedMediaType415)
+
+v3e5 :: Decision
+v3e5 = decideIfHeader Header.hAcceptCharset
+                      v3e6
+                      v3f6
+
+v3e6 :: BS.ByteString -> Decision
+v3e6 c res = do
+  cs <- charsetsProvided res
+
+  case cs of
+    Nothing -> v3f6 res
+    Just charsets ->
+      case MT.mapAccept charsets c of
+        Nothing -> toResponse HTTP.unsupportedMediaType415
+        Just _ -> v3f6 res
+
+v3f6 :: Decision
+v3f6 = const $ toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =

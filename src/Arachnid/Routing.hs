@@ -33,6 +33,9 @@ instance Resource RoutableResource where
   knownContentType (RoutableResource a _) = knownContentType a
   validContentHeaders (RoutableResource a _) = validContentHeaders a
   options (RoutableResource a _) = options a
+  contentTypesProvided (RoutableResource a _) = contentTypesProvided a
+  languageAvailable l (RoutableResource a _) = languageAvailable l a
+  charsetsProvided (RoutableResource a _) = charsetsProvided a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

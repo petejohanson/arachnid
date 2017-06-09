@@ -31,6 +31,7 @@ library
                      , text
                      , resourcet
                      , http-types
+                     , http-media
 
 test-suite spec
   type:                exitcode-stdio-1.0
@@ -58,5 +59,6 @@ executable helloWorld
                      , warp
                      , wai
                      , http-types
+                     , http-media
                      , bytestring
                      , text

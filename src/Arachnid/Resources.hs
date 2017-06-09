@@ -14,15 +14,22 @@ module Arachnid.Resources
 , knownContentType
 , requestEntityTooLarge
 , options
+, contentTypesProvided
+, languageAvailable
+, charsetsProvided
 , Responsible
 , toResponse
 ) where
 
+import Data.Word
+import Data.Text
+import Data.ByteString
 import Control.Monad.Reader
 import Control.Monad.Trans.Resource
 
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
+import qualified Network.HTTP.Media as MT
 
 type ResourceMonad = ReaderT Wai.Request (ResourceT IO)
 
@@ -70,6 +77,15 @@ class (Show a) => Resource a where
 
   options :: a -> ResourceMonad HTTP.ResponseHeaders
   options = const $ return []
+
+  contentTypesProvided :: a -> ResourceMonad [(MT.MediaType, ResourceMonad (IO ByteString))]
+  contentTypesProvided = const $ return []
+
+  languageAvailable :: ByteString -> a -> ResourceMonad Bool
+  languageAvailable = const $ const $ return True
+
+  charsetsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
+  charsetsProvided = const $ return Nothing
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response
