@@ -45,7 +45,6 @@ test-suite doctest
                      , wai >= 3.0
                      , resourcet
                      , text
-                     , ghc == 7.10.*
                      , doctest
                      , Glob
   default-language:    Haskell2010
