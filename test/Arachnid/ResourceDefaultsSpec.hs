@@ -15,7 +15,8 @@ run :: forall (m :: * -> *) a.
              MonadBaseControl IO m =>
              ReaderT Request (ResourceT m) a -> m a
 
-run res = runResourceT $ runReaderT res defaultRequest
+run res =
+  runResourceT $ runReaderT res defaultRequest
 
 spec :: Spec
 spec = describe "Default resources" $ do
@@ -69,3 +70,14 @@ defaultResourceSpecs a =
       res <- run $ options a
       res `shouldBe` []
 
+    it "has contentTypesProvided = []" $ do
+      res <- run $ contentTypesProvided a
+      map fst res `shouldMatchList` []  -- fst map hack to avoid lack of Show/Eq instance for second element
+
+    it "has languageAvailable = True" $ do
+       res <- run $ languageAvailable "en-US" a
+       res `shouldBe` True
+
+    it "has charsetsProvided = Nothing" $ do
+      res <- run $ charsetsProvided a
+      (map fst) `fmap` res `shouldBe` Nothing -- fst map hack to avoid lack of Show/Eq instance for second element
