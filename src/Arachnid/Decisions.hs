@@ -121,8 +121,25 @@ v3e6 c res = do
         Nothing -> toResponse HTTP.unsupportedMediaType415
         Just _ -> v3f6 res
 
+
 v3f6 :: Decision
-v3f6 = const $ toResponse HTTP.ok200
+v3f6 = decideIfHeader Header.hAcceptEncoding
+                      v3f7
+                      v3g7
+
+v3f7 :: BS.ByteString -> Decision
+v3f7 c res = do
+  es <- encodingsProvided res
+
+  case es of
+    Nothing -> v3g7 res
+    Just encodings ->
+      case MT.mapAccept encodings c of
+        Nothing -> toResponse HTTP.unsupportedMediaType415
+        Just _ -> v3g7 res
+
+v3g7 :: Decision
+v3g7 = const $ toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =

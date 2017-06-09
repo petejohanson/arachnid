@@ -17,6 +17,7 @@ module Arachnid.Resources
 , contentTypesProvided
 , languageAvailable
 , charsetsProvided
+, encodingsProvided
 , Responsible
 , toResponse
 ) where
@@ -86,6 +87,9 @@ class (Show a) => Resource a where
 
   charsetsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
   charsetsProvided = const $ return Nothing
+
+  encodingsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
+  encodingsProvided = const $ return Nothing
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response
