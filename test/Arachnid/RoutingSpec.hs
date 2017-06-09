@@ -2,27 +2,24 @@ module Arachnid.RoutingSpec where
 
 import Test.Hspec
 import Arachnid.Routing
+import Data.Maybe
 import Data.Text (pack)
 
 spec :: Spec
 spec = do
   describe "Routing" $ do
     describe "The root route" $ do
-      it "matches the basic route" $ do
-        let isJust (Just _) = True
-            isJust _ = False
+      it "matches the basic route" $
         match [Root] [] `shouldSatisfy` isJust
 
-      it "does not match complex routes" $ do
+      it "does not match complex routes" $
         match [Root] [pack "home"] `shouldBe` Nothing
 
     describe "A basic string segment" $ do
-      it "matches the same string route" $ do
-        let isJust (Just _) = True
-            isJust _ = False
+      it "matches the same string route" $
         match [Segment "home"] [pack "home"] `shouldSatisfy` isJust
 
-      it "does not match a different string" $ do
+      it "does not match a different string" $
         match [Segment "home"] [pack "users"] `shouldBe` Nothing
 
     describe "A capture segment" $ do

@@ -23,7 +23,7 @@ spec = describe "Default resources" $ do
   defaultResourceSpecs (Segment "users" </> Segment "123" <:> TestResource)
 
 defaultResourceSpecs :: (Resource a) => a -> Spec
-defaultResourceSpecs a = do
+defaultResourceSpecs a =
   describe ("Resource defaults for " ++ show a) $ do
     it "has serviceAvailable = True" $ do
       res <- run $ serviceAvailable a
