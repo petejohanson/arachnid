@@ -4,13 +4,18 @@ module Arachnid.Decisions
 ( handle
 ) where
 
-
 import Control.Monad.Reader
 import Control.Monad.Trans.Resource
 import Arachnid.Resources
+import Arachnid.Internal.Date (parseHttpDate)
+import Data.Char (ord)
 import Data.List
 import Data.Maybe
+import Data.Time
+
+import qualified Data.Text as Text
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as C8
 import qualified Network.HTTP.Media as MT
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Types.Header as Header
@@ -139,7 +144,65 @@ v3f7 c res = do
         Just _ -> v3g7 res
 
 v3g7 :: Decision
-v3g7 = const $ toResponse HTTP.ok200
+v3g7 = decisionBranch resourceExists
+                      v3g8
+                      v3h7
+
+v3g8 :: Decision
+v3g8 = decideIfHeader Header.hIfMatch
+                      v3g9
+                      v3h10
+
+v3g9 :: BS.ByteString -> Decision
+v3g9 "*" = v3h10
+v3g9 im  = v3g11 im
+
+v3g11 :: BS.ByteString -> Decision
+v3g11 im res = do
+  -- TODO: Need to strip whitespace too!
+  let matchTags = BS.split (fromIntegral $ ord ',') im
+
+  etag <- generateETag res
+  case etag of
+    Nothing -> toResponse HTTP.preconditionFailed412
+    Just e ->
+      if e `elem` matchTags
+        then v3h10 res
+        else toResponse HTTP.preconditionFailed412
+
+
+v3h10 :: Decision
+v3h10 = decideIfHeader Header.hIfUnmodifiedSince
+                       v3h11
+                       v3i12
+
+v3h7 :: Decision
+v3h7 res = do
+  h <- asks Wai.requestHeaders
+
+  case find (==(Header.hIfMatch, "*")) h of
+    Just _ -> toResponse HTTP.preconditionFailed412
+    Nothing -> v3i7 res
+
+v3i7 :: Decision
+v3i7 = const $ toResponse HTTP.ok200
+
+v3h11 :: BS.ByteString -> Decision
+v3h11 ius =
+  case parseHttpDate ius of
+    Nothing -> v3i12
+    Just d -> v3h12 d
+
+v3i12 :: Decision
+v3i12 = const $ toResponse HTTP.ok200
+
+v3h12 :: UTCTime -> Decision
+v3h12 ius res = do
+  lm <- lastModified res
+
+  if Just ius < lm
+    then v3i12 res
+    else toResponse HTTP.preconditionFailed412
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =

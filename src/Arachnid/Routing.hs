@@ -36,6 +36,10 @@ instance Resource RoutableResource where
   contentTypesProvided (RoutableResource a _) = contentTypesProvided a
   languageAvailable l (RoutableResource a _) = languageAvailable l a
   charsetsProvided (RoutableResource a _) = charsetsProvided a
+  encodingsProvided (RoutableResource a _) = encodingsProvided a
+  resourceExists (RoutableResource a _) = resourceExists a
+  generateETag (RoutableResource a _) = generateETag a
+  lastModified (RoutableResource a _) = lastModified a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

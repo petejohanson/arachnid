@@ -18,12 +18,16 @@ module Arachnid.Resources
 , languageAvailable
 , charsetsProvided
 , encodingsProvided
+, resourceExists
+, generateETag
+, lastModified
 , Responsible
 , toResponse
 ) where
 
 import Data.Word
 import Data.Text
+import Data.Time
 import Data.ByteString
 import Control.Monad.Reader
 import Control.Monad.Trans.Resource
@@ -90,6 +94,15 @@ class (Show a) => Resource a where
 
   encodingsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
   encodingsProvided = const $ return Nothing
+
+  resourceExists :: a -> ResourceMonad Bool
+  resourceExists = const $ return True
+
+  generateETag :: a -> ResourceMonad (Maybe ByteString)
+  generateETag = const $ return Nothing
+
+  lastModified :: a -> ResourceMonad (Maybe UTCTime)
+  lastModified = const $ return Nothing
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response
