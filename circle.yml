@@ -9,4 +9,4 @@ test:
   override:
     - stack test --coverage
   post:
-    - stack install hpc-coveralls && stack exec hpc-coveralls -- --repo-token ${COVERALLS_REPO_TOKEN} spec doctest
+    - stack install stack-hpc-coveralls && stack exec shc -- --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
