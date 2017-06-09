@@ -3,7 +3,7 @@ dependencies:
     - "~/.stack"
   override:
     - stack setup
-    - stack build
+    - stack build --test --no-run-tests --coverage
 
 test:
   override:
