@@ -90,6 +90,15 @@ decideIfHeader header found missing res = do
     Just a -> found (snd a) res
     Nothing -> missing res
 
+decideIfDateHeader :: (Resource a) => Header.HeaderName -> (UTCTime -> Decision) -> Decision -> a -> ResourceMonad Wai.Response
+decideIfDateHeader header found missing = decideIfHeader header (decideIfDate found missing) missing
+
+decideIfDate :: (UTCTime -> Decision) -> Decision -> BS.ByteString -> Decision
+decideIfDate found missing s =
+  case parseHttpDate s of
+    Nothing -> missing
+    Just date -> found date
+
 v3c3 :: Decision
 v3c3 = decideIfHeader Header.hAccept
                       v3c4
@@ -157,23 +166,25 @@ v3g9 :: BS.ByteString -> Decision
 v3g9 "*" = v3h10
 v3g9 im  = v3g11 im
 
-v3g11 :: BS.ByteString -> Decision
-v3g11 im res = do
+decideETagMatch :: (Resource a) => Decision -> Decision -> BS.ByteString -> a -> ResourceMonad Wai.Response
+decideETagMatch pass fail h res = do
   -- TODO: Need to strip whitespace too!
-  let matchTags = BS.split (fromIntegral $ ord ',') im
+  let matchTags = BS.split (fromIntegral $ ord ',') h
 
   etag <- generateETag res
   case etag of
-    Nothing -> toResponse HTTP.preconditionFailed412
+    Nothing -> fail res
     Just e ->
       if e `elem` matchTags
-        then v3h10 res
-        else toResponse HTTP.preconditionFailed412
+        then pass res
+        else fail res
 
+v3g11 :: BS.ByteString -> Decision
+v3g11 = decideETagMatch v3h10 (const $ toResponse HTTP.preconditionFailed412)
 
 v3h10 :: Decision
-v3h10 = decideIfHeader Header.hIfUnmodifiedSince
-                       v3h11
+v3h10 = decideIfDateHeader Header.hIfUnmodifiedSince
+                       v3h12
                        v3i12
 
 v3h7 :: Decision
@@ -187,15 +198,6 @@ v3h7 res = do
 v3i7 :: Decision
 v3i7 = const $ toResponse HTTP.ok200
 
-v3h11 :: BS.ByteString -> Decision
-v3h11 ius =
-  case parseHttpDate ius of
-    Nothing -> v3i12
-    Just d -> v3h12 d
-
-v3i12 :: Decision
-v3i12 = const $ toResponse HTTP.ok200
-
 v3h12 :: UTCTime -> Decision
 v3h12 ius res = do
   lm <- lastModified res
@@ -203,6 +205,49 @@ v3h12 ius res = do
   if Just ius < lm
     then v3i12 res
     else toResponse HTTP.preconditionFailed412
+
+v3i12 :: Decision
+v3i12 = decideIfHeader Header.hIfNoneMatch
+                       v3i13
+                       v3l13
+
+v3i13 :: BS.ByteString -> Decision
+v3i13 "*" = v3j18
+v3i13 inm = v3k13 inm
+
+v3l13 :: Decision
+v3l13 = decideIfDateHeader Header.hIfModifiedSince
+                           v3l15
+                           v3m16
+
+v3j18 :: Decision
+v3j18 _ = do
+  m <- asks Wai.requestMethod
+
+  if m `elem` ["GET", "HEAD"]
+    then toResponse HTTP.notModified304
+    else toResponse HTTP.preconditionFailed412
+
+v3k13 :: BS.ByteString -> Decision
+v3k13 = decideETagMatch v3j18 v3l13
+
+v3l15 :: UTCTime -> Decision
+v3l15 ims res = do
+  now <- lift $ lift getCurrentTime
+  if ims > now
+    then v3m16 res
+    else v3l17 ims res
+
+v3l17 :: UTCTime -> Decision
+v3l17 ims res = do
+  lm <- lastModified res
+
+  if Just ims < lm
+    then toResponse HTTP.notModified304
+    else v3m16 res
+
+v3m16 :: Decision
+v3m16 = const $ toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =
