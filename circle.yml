@@ -9,4 +9,5 @@ test:
   override:
     - stack test --coverage
   post:
-    - stack install stack-hpc-coveralls && stack exec shc -- --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
+    - curl -L https://github.com/fendor/stack-hpc-coveralls/releases/download/v0.0.4.1/shc-linux-x64-8.0.2.tar.bz2 | tar -xj
+    - ./shc --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
