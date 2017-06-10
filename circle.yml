@@ -10,4 +10,4 @@ test:
     - stack test --coverage
   post:
     - curl -L https://github.com/fendor/stack-hpc-coveralls/releases/download/v0.0.4.1/shc-linux-x64-8.0.2.tar.bz2 | tar -xvj
-    - ./shc-linux-x64-8.0.2/shc --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
+    - ./shc --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
