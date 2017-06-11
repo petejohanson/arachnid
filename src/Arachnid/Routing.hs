@@ -40,6 +40,8 @@ instance Resource RoutableResource where
   resourceExists (RoutableResource a _) = resourceExists a
   generateETag (RoutableResource a _) = generateETag a
   lastModified (RoutableResource a _) = lastModified a
+  deleteResource (RoutableResource a _) = deleteResource a
+  deleteCompleted (RoutableResource a _) = deleteCompleted a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

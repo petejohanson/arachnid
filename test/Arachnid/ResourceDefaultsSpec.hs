@@ -97,3 +97,11 @@ defaultResourceSpecs a =
     it "has lastModified = Nothing" $ do
       res <- run $ lastModified a
       res `shouldBe` Nothing
+
+    it "has deleteResource = True" $ do
+      res <- run $ deleteResource a
+      res `shouldBe` True
+
+    it "has deleteCompleted = True" $ do
+      res <- run $ deleteCompleted a
+      res `shouldBe` True

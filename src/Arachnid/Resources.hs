@@ -21,6 +21,8 @@ module Arachnid.Resources
 , resourceExists
 , generateETag
 , lastModified
+, deleteResource
+, deleteCompleted
 , Responsible
 , toResponse
 ) where
@@ -103,6 +105,12 @@ class (Show a) => Resource a where
 
   lastModified :: a -> ResourceMonad (Maybe UTCTime)
   lastModified = const $ return Nothing
+
+  deleteResource :: a -> ResourceMonad Bool
+  deleteResource = const $ return True
+
+  deleteCompleted :: a -> ResourceMonad Bool
+  deleteCompleted = const $ return True
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

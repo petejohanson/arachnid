@@ -247,7 +247,31 @@ v3l17 ims res = do
     else v3m16 res
 
 v3m16 :: Decision
-v3m16 = const $ toResponse HTTP.ok200
+v3m16 res = do
+  m <- asks Wai.requestMethod
+
+  if m == "DELETE"
+    then v3m20 res
+    else v3n16 res
+-- v3m16 res = decisionBranch (asks Wai.requestMethod >>= (=="DELETE"))
+--                        v3m20 res
+--                        v3n16 res
+
+v3m20 :: Decision
+v3m20 = decisionBranch deleteResource
+                       v3m20b
+                       (const $ toResponse HTTP.status500)
+
+v3m20b :: Decision
+v3m20b = decisionBranch deleteCompleted
+                       v3o20
+                       (const $ toResponse HTTP.accepted202)
+
+v3o20 :: Decision
+v3o20 = const $ toResponse HTTP.ok200
+
+v3n16 :: Decision
+v3n16 = const $ toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res =
