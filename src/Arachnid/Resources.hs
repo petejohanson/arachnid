@@ -3,6 +3,7 @@
 module Arachnid.Resources
 ( ResourceMonad
 , Resource
+, ProcessingResult (Halt, Error, Success, Created)
 , serviceAvailable
 , knownMethods
 , requestURITooLong
@@ -26,6 +27,9 @@ module Arachnid.Resources
 , resourcePreviouslyExisted
 , movedPermanently
 , isConflict
+, contentTypesAccepted
+, hasResponseBody
+, multipleChoices
 , Responsible
 , toResponse
 ) where
@@ -42,6 +46,8 @@ import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Media as MT
 
 type ResourceMonad = ReaderT Wai.Request (ResourceT IO)
+
+data ProcessingResult = Halt HTTP.Status | Success | Error | Created ByteString deriving (Show)
 
 http_1_1_Methods :: [HTTP.Method]
 http_1_1_Methods = [ "GET"
@@ -123,6 +129,15 @@ class (Show a) => Resource a where
 
   isConflict :: a -> ResourceMonad Bool
   isConflict = const $ return False
+
+  contentTypesAccepted :: a -> ResourceMonad [(MT.MediaType, ResourceMonad ProcessingResult)]
+  contentTypesAccepted = const $ return []
+
+  hasResponseBody :: a -> ResourceMonad Bool
+  hasResponseBody = const $ return False
+
+  multipleChoices :: a -> ResourceMonad Bool
+  multipleChoices = const $ return False
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

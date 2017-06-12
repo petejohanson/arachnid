@@ -113,3 +113,12 @@ defaultResourceSpecs a =
     it "has isConflict = False" $ do
       res <- run $ isConflict a
       res `shouldBe` False
+
+    it "has hasResponseBody = False" $ do
+      res <- run $ hasResponseBody a
+      res `shouldBe` False
+
+
+    it "has multipleChoices = False" $ do
+      res <- run $ multipleChoices a
+      res `shouldBe` False

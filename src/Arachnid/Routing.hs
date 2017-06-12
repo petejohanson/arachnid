@@ -45,6 +45,8 @@ instance Resource RoutableResource where
   resourcePreviouslyExisted (RoutableResource a _) = resourcePreviouslyExisted a
   movedPermanently (RoutableResource a _) = movedPermanently a
   isConflict (RoutableResource a _) = isConflict a
+  hasResponseBody (RoutableResource a _) = hasResponseBody a
+  multipleChoices (RoutableResource a _) = multipleChoices a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

@@ -220,10 +220,22 @@ v3k7 = const $ toResponse HTTP.ok200
 v3p3 :: Decision
 v3p3 = decisionBranch isConflict
                       (return $ toResponse HTTP.conflict409)
-                      v3p11
+                      (\res -> acceptContent res >>= v3p11 res)
 
-v3p11 :: Decision
-v3p11 = const $ toResponse HTTP.ok200
+acceptContent :: (Resource a) => a -> ResourceMonad ProcessingResult
+acceptContent res = do
+  headers <- asks Wai.requestHeaders
+  accepted <- contentTypesAccepted res
+
+  case fmap snd  (find ((==Header.hContentType) . fst) headers) >>= (MT.mapContent accepted) of
+    Nothing -> return $ Halt HTTP.unsupportedMediaType415
+    Just t -> t
+
+v3p11 :: (Resource a) => a -> ProcessingResult -> ResourceMonad Wai.Response
+v3p11 _ (Halt status) = toResponse status
+v3p11 _ (Created uri) = return $ Wai.responseLBS HTTP.created201 [(Header.hLocation, uri)] ""
+v3p11 _ Error = toResponse HTTP.status500
+v3p11 r Success = v3o20 r
 
 v3h12 :: UTCTime -> Decision
 v3h12 ius res = do
@@ -287,7 +299,14 @@ v3m20b = decisionBranch deleteCompleted
                        (const $ toResponse HTTP.accepted202)
 
 v3o20 :: Decision
-v3o20 = const $ toResponse HTTP.ok200
+v3o20 = decisionBranch hasResponseBody
+                       v3o18
+                       (const $ toResponse HTTP.noContent204)
+
+v3o18 :: Decision
+v3o18 = decisionBranch multipleChoices
+                       (const $ toResponse HTTP.status300)
+                       (const $ toResponse HTTP.ok200)
 
 v3n16 :: Decision
 v3n16 = const $ toResponse HTTP.ok200
