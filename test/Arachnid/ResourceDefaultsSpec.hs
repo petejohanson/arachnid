@@ -105,3 +105,11 @@ defaultResourceSpecs a =
     it "has deleteCompleted = True" $ do
       res <- run $ deleteCompleted a
       res `shouldBe` True
+
+    it "has resourcePreviouslyExisted = False" $ do
+      res <- run $ resourcePreviouslyExisted a
+      res `shouldBe` False
+
+    it "has isConflict = False" $ do
+      res <- run $ isConflict a
+      res `shouldBe` False

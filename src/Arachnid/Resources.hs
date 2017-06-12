@@ -23,6 +23,9 @@ module Arachnid.Resources
 , lastModified
 , deleteResource
 , deleteCompleted
+, resourcePreviouslyExisted
+, movedPermanently
+, isConflict
 , Responsible
 , toResponse
 ) where
@@ -111,6 +114,15 @@ class (Show a) => Resource a where
 
   deleteCompleted :: a -> ResourceMonad Bool
   deleteCompleted = const $ return True
+
+  resourcePreviouslyExisted :: a -> ResourceMonad Bool
+  resourcePreviouslyExisted = const $ return False
+
+  movedPermanently :: a -> ResourceMonad (Maybe ByteString)
+  movedPermanently = const $ return Nothing
+
+  isConflict :: a -> ResourceMonad Bool
+  isConflict = const $ return False
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

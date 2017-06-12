@@ -42,6 +42,9 @@ instance Resource RoutableResource where
   lastModified (RoutableResource a _) = lastModified a
   deleteResource (RoutableResource a _) = deleteResource a
   deleteCompleted (RoutableResource a _) = deleteCompleted a
+  resourcePreviouslyExisted (RoutableResource a _) = resourcePreviouslyExisted a
+  movedPermanently (RoutableResource a _) = movedPermanently a
+  isConflict (RoutableResource a _) = isConflict a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

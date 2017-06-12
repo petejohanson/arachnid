@@ -99,6 +99,14 @@ decideIfDate found missing s =
     Nothing -> missing
     Just date -> found date
 
+decideIfMethod :: (Resource a) => HTTP.Method -> Decision -> Decision -> a -> ResourceMonad Wai.Response
+decideIfMethod method pass fail res = do
+  rm <- asks Wai.requestMethod
+
+  if rm == method
+    then pass res
+    else fail res
+
 v3c3 :: Decision
 v3c3 = decideIfHeader Header.hAccept
                       v3c4
@@ -196,7 +204,26 @@ v3h7 res = do
     Nothing -> v3i7 res
 
 v3i7 :: Decision
-v3i7 = const $ toResponse HTTP.ok200
+v3i7 = decideIfMethod "PUT" v3i4 v3k7
+
+v3i4 :: Decision
+v3i4 res = do
+  movedUri <- movedPermanently res
+
+  case movedUri of
+    Nothing -> v3p3 res
+    Just uri -> return $ Wai.responseLBS HTTP.movedPermanently301 [("Location", uri)] ""
+
+v3k7 :: Decision
+v3k7 = const $ toResponse HTTP.ok200
+
+v3p3 :: Decision
+v3p3 = decisionBranch isConflict
+                      (return $ toResponse HTTP.conflict409)
+                      v3p11
+
+v3p11 :: Decision
+v3p11 = const $ toResponse HTTP.ok200
 
 v3h12 :: UTCTime -> Decision
 v3h12 ius res = do
@@ -247,15 +274,7 @@ v3l17 ims res = do
     else v3m16 res
 
 v3m16 :: Decision
-v3m16 res = do
-  m <- asks Wai.requestMethod
-
-  if m == "DELETE"
-    then v3m20 res
-    else v3n16 res
--- v3m16 res = decisionBranch (asks Wai.requestMethod >>= (=="DELETE"))
---                        v3m20 res
---                        v3n16 res
+v3m16 = decideIfMethod "DELETE" v3m20 v3n16
 
 v3m20 :: Decision
 v3m20 = decisionBranch deleteResource
