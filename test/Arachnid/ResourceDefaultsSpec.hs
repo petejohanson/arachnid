@@ -3,8 +3,10 @@ module Arachnid.ResourceDefaultsSpec where
 
 import Control.Monad.Trans.Resource
 import Control.Monad.Reader
+import Control.Monad.State
 import Test.Hspec
 import Arachnid.Resources
+import Arachnid.Response (ResponseData, emptyResponse)
 import Arachnid.Routing
 import Network.Wai
 
@@ -12,11 +14,13 @@ data TestResource = TestResource deriving (Show)
 instance Resource TestResource
 
 run :: forall (m :: * -> *) a.
-             MonadBaseControl IO m =>
-             ReaderT Request (ResourceT m) a -> m a
+       MonadBaseControl IO m =>
+       ReaderT
+         Request (StateT ResponseData (ResourceT m)) a
+       -> m a
 
 run res =
-  runResourceT $ runReaderT res defaultRequest
+  runResourceT $ evalStateT (runReaderT res defaultRequest) emptyResponse
 
 spec :: Spec
 spec = describe "Default resources" $ do

@@ -34,18 +34,21 @@ module Arachnid.Resources
 , toResponse
 ) where
 
+import Arachnid.Response
+
 import Data.Word
 import Data.Text
 import Data.Time
 import Data.ByteString
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Trans.Resource
 
 import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Media as MT
 
-type ResourceMonad = ReaderT Wai.Request (ResourceT IO)
+type ResourceMonad = ReaderT Wai.Request (StateT ResponseData (ResourceT IO))
 
 data ProcessingResult = Halt HTTP.Status | Success | Error | Created ByteString deriving (Show)
 

@@ -6,8 +6,10 @@ module Arachnid.Decisions
 
 import Control.Applicative
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Monad.Trans.Resource
 import Arachnid.Resources
+import Arachnid.Response (emptyResponse)
 import Arachnid.Internal.Date (parseHttpDate)
 import Data.Char (ord)
 import Data.List
@@ -116,13 +118,13 @@ decideIfDate found missing s =
     Nothing -> missing
     Just date -> found date
 
-decideIfMethod :: (Resource a) => HTTP.Method -> DecisionResult -> DecisionResult -> a -> ResourceMonad DecisionResult
-decideIfMethod method pass fail res = do
-  rm <- asks Wai.requestMethod
-
-  if rm == method
-    then return pass
-    else return fail
+decideIfMethod :: HTTP.Method -> DecisionResult -> DecisionResult -> ResourceMonad DecisionResult
+decideIfMethod method pass fail = ((==) <$> asks Wai.requestMethod <*> (pure method)) >>= (\p -> if p then return pass else return fail)
+--   rm <- asks Wai.requestMethod
+-- 
+--   if rm == method
+--     then return pass
+--     else return fail
 
 parseETag :: BS.ByteString -> [BS.ByteString]
 parseETag = BS.split (fromIntegral $ ord ',')
@@ -216,7 +218,13 @@ decision H12  = decisionBranch (\res -> (<) <$> ((fmap $ fromJust . parseHttpDat
                                (Status HTTP.preconditionFailed412)
 
 
+decision I7 = const $ decideIfMethod "PUT" (Node I4) (Node K7)
+
 decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Node I13) (Node L13)
+decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Node . ifNoneMatchNodeMap . fromJust)
+  where ifNoneMatchNodeMap "*" = J18
+        ifNoneMatchNodeMap _   = K13
+decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Status HTTP.notModified304) else (return $ Status HTTP.preconditionFailed412))
 
 -- data AllowedMethods = AllowedMethods [HTTP.Method]
 -- instance Responsible AllowedMethods where
@@ -472,9 +480,9 @@ decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Node I13) (Node L13)
 -- v3n16 = const $ toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
-handle res = runReaderT (decide decisionStart res)
+-- handle res req = (runStateT (runReaderT (decide decisionStart res) req) emptyResponse) >>= (\(status, response) -> toResponse status)
+handle res req = evalStateT (runReaderT (decide decisionStart res) req) emptyResponse
    where decide node res = decision node res >>= processResult
          processResult result = case result of
                                   Node next -> decide next res
-                                  Status s -> toResponse s
-
+                                  Status s  -> toResponse s

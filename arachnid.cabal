@@ -20,6 +20,7 @@ library
   exposed-modules:     Arachnid
                      , Arachnid.Resources
                      , Arachnid.Decisions
+                     , Arachnid.Response
                      , Arachnid.Routing
   other-modules:       Arachnid.Internal.Date
   -- other-extensions:
