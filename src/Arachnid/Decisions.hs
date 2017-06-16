@@ -156,15 +156,9 @@ decision B6 = decisionBranch validContentHeaders (Right B5) (Left HTTP.notImplem
 decision B5 = decisionBranch knownContentType (Right B4) (Left HTTP.unsupportedMediaType415)
 decision B4 = decisionBranch requestEntityTooLarge (Left HTTP.requestEntityTooLarge413) (Right B3)
 decision B3 = decisionBranch isOptions (Left HTTP.ok200) (Right C3)
-  where isOptions res = do
-          m <- asks Wai.requestMethod
-
-          if m == "OPTIONS"
-            then do
-              opts <- options res
-              modify $ Resp.addHeaders opts
-              return True
-            else return False
+  where handleOptions _ False = return False
+        handleOptions res True = options res >>= (modify . Resp.addHeaders) >>= (const $ return True)
+        isOptions res = (=="OPTIONS") <$> asks Wai.requestMethod >>= handleOptions res
 
 decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right D5)
 
