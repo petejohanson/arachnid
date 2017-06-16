@@ -217,6 +217,13 @@ decision G9 = const $ (getHeader Header.hIfMatch) >>= (return . Right . ifMatchN
 
 decision G11 = decideETagMatch Header.hIfMatch (Right H10) (Left HTTP.preconditionFailed412)
 
+decision H7 = const $ do
+  h <- asks Wai.requestHeaders
+
+  case find (==(Header.hIfMatch, "*")) h of
+    Nothing -> return $ Right I7
+    (Just _) -> return $ Left HTTP.preconditionFailed412
+
 decision H10 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Right H12) (Right I12)
 
 -- Tad duplicitive, but allows tracing to not miss decision point. Worth it?
@@ -233,101 +240,18 @@ decision I4 = decideUnlessMovedPermanently (Right P3)
 decision I7 = const $ decideIfMethod "PUT" (Right I4) (Right K7)
 
 decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Right I13) (Right L13)
+
 decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Right . ifNoneMatchNodeMap . fromJust)
   where ifNoneMatchNodeMap "*" = J18
         ifNoneMatchNodeMap _   = K13
+
 decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Left HTTP.notModified304) else (return $ Left HTTP.preconditionFailed412))
 
-decision K7 = decisionBranch previouslyExisted (Right K5) (Right L7)
 decision K5 = decideUnlessMovedPermanently (Right L7)
--- 
--- v3c3 :: Decision
--- v3c3 = decideIfHeader Header.hAccept
---                       v3c4
---                       (const $ toResponse HTTP.ok200)
--- 
--- v3c4 :: BS.ByteString -> Decision
--- v3c4 a = decisionBranch (\res -> (\types -> isJust $ MT.mapAccept types a) `fmap` contentTypesProvided res)
---                         v3d4
---                         (const $ toResponse HTTP.unsupportedMediaType415)
--- 
--- v3d4 :: Decision
--- v3d4 = decideIfHeader Header.hAcceptLanguage
---                       v3d5
---                       v3e5
--- 
--- v3d5 :: BS.ByteString -> Decision
--- v3d5 l = decisionBranch (languageAvailable l)
---                         v3e5
---                         (const $ toResponse HTTP.unsupportedMediaType415)
--- 
--- v3e5 :: Decision
--- v3e5 = decideIfHeader Header.hAcceptCharset
---                       v3e6
---                       v3f6
--- 
--- v3e6 :: BS.ByteString -> Decision
--- v3e6 c res = do
---   cs <- charsetsProvided res
--- 
---   case cs of
---     Nothing -> v3f6 res
---     Just charsets ->
---       case MT.mapAccept charsets c of
---         Nothing -> toResponse HTTP.unsupportedMediaType415
---         Just _ -> v3f6 res
--- 
--- 
--- v3f6 :: Decision
--- v3f6 = decideIfHeader Header.hAcceptEncoding
---                       v3f7
---                       v3g7
--- 
--- v3f7 :: BS.ByteString -> Decision
--- v3f7 c res = do
---   es <- encodingsProvided res
--- 
---   case es of
---     Nothing -> v3g7 res
---     Just encodings ->
---       case MT.mapAccept encodings c of
---         Nothing -> toResponse HTTP.unsupportedMediaType415
---         Just _ -> v3g7 res
--- 
--- v3g7 :: Decision
--- v3g7 = decisionBranch resourceExists
---                       v3g8
---                       v3h7
--- 
--- v3g8 :: Decision
--- v3g8 = decideIfHeader Header.hIfMatch
---                       v3g9
---                       v3h10
--- 
--- v3g9 :: BS.ByteString -> Decision
--- v3g9 "*" = v3h10
--- v3g9 im  = v3g11 im
--- 
--- decideETagMatch :: (Resource a) => Decision -> Decision -> BS.ByteString -> a -> ResourceMonad Wai.Response
--- decideETagMatch pass fail h res = do
---   -- TODO: Need to strip whitespace too!
---   let matchTags = BS.split (fromIntegral $ ord ',') h
--- 
---   etag <- generateETag res
---   case etag of
---     Nothing -> fail res
---     Just e ->
---       if e `elem` matchTags
---         then pass res
---         else fail res
--- 
--- v3g11 :: BS.ByteString -> Decision
--- v3g11 = decideETagMatch v3h10 (const $ toResponse HTTP.preconditionFailed412)
--- 
--- v3h10 :: Decision
--- v3h10 = decideIfDateHeader Header.hIfUnmodifiedSince
---                        v3h12
---                        v3i12
+
+decision K7 = decisionBranch previouslyExisted (Right K5) (Right L7)
+
+decision K13 = decideETagMatch Header.hIfNoneMatch (Right J18) (Right L13)
 -- 
 -- v3h7 :: Decision
 -- v3h7 res = do
