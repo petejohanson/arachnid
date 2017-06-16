@@ -44,6 +44,7 @@ instance Resource RoutableResource where
   deleteCompleted (RoutableResource a _) = deleteCompleted a
   previouslyExisted (RoutableResource a _) = previouslyExisted a
   movedPermanently (RoutableResource a _) = movedPermanently a
+  movedTemporarily (RoutableResource a _) = movedTemporarily a
   isConflict (RoutableResource a _) = isConflict a
   hasResponseBody (RoutableResource a _) = hasResponseBody a
   multipleChoices (RoutableResource a _) = multipleChoices a

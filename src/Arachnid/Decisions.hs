@@ -121,11 +121,6 @@ decideIfDate found missing s =
 
 decideIfMethod :: HTTP.Method -> DecisionResult -> DecisionResult -> ResourceMonad DecisionResult
 decideIfMethod method pass fail = ((==) <$> asks Wai.requestMethod <*> (pure method)) >>= (\p -> if p then return pass else return fail)
---   rm <- asks Wai.requestMethod
--- 
---   if rm == method
---     then return pass
---     else return fail
 
 parseETag :: BS.ByteString -> [BS.ByteString]
 parseETag = BS.split (fromIntegral $ ord ',')
@@ -135,8 +130,14 @@ decideETagMatch header pass fail = decisionBranch (\res -> (fromMaybe False) `fm
   where (<**>) = liftA2 (<*>)
 
 decideUnlessMovedPermanently :: (Resource a) => DecisionResult -> a -> ResourceMonad DecisionResult
-decideUnlessMovedPermanently notMoved = decisionBranch isMoved (Left HTTP.movedPermanently301) notMoved
-  where isMoved res = (movedPermanently res) >>= mapUri
+decideUnlessMovedPermanently = decideUnlessMoved movedPermanently HTTP.movedPermanently301
+
+decideUnlessMovedTemporarily :: (Resource a) => DecisionResult -> a -> ResourceMonad DecisionResult
+decideUnlessMovedTemporarily = decideUnlessMoved movedTemporarily HTTP.status307
+
+decideUnlessMoved :: (Resource a) => (a -> ResourceMonad (Maybe BS.ByteString)) -> HTTP.Status -> DecisionResult -> a -> ResourceMonad DecisionResult
+decideUnlessMoved check movedStatus notMoved = decisionBranch isMoved (Left movedStatus) notMoved
+  where isMoved res = (check res) >>= mapUri
         mapUri :: Maybe BS.ByteString -> ResourceMonad Bool
         mapUri Nothing = return False
         mapUri (Just uri) = (modify $ Resp.addHeader Header.hLocation uri) >>= (const $ return True)
@@ -247,33 +248,31 @@ decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Right . ifN
 
 decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Left HTTP.notModified304) else (return $ Left HTTP.preconditionFailed412))
 
-decision K5 = decideUnlessMovedPermanently (Right L7)
+decision K5 = decideUnlessMovedPermanently (Right L5)
 
 decision K7 = decisionBranch previouslyExisted (Right K5) (Right L7)
 
 decision K13 = decideETagMatch Header.hIfNoneMatch (Right J18) (Right L13)
--- 
--- v3h7 :: Decision
--- v3h7 res = do
---   h <- asks Wai.requestHeaders
--- 
---   case find (==(Header.hIfMatch, "*")) h of
---     Just _ -> toResponse HTTP.preconditionFailed412
---     Nothing -> v3i7 res
--- 
--- v3i7 :: Decision
--- v3i7 = decideIfMethod "PUT" v3i4 v3k7
--- 
--- v3i4 :: Decision
--- v3i4 res = do
---   movedUri <- movedPermanently res
--- 
---   case movedUri of
---     Nothing -> v3p3 res
---     Just uri -> return $ Wai.responseLBS HTTP.movedPermanently301 [("Location", uri)] ""
--- 
--- v3k7 :: Decision
--- v3k7 = const $ toResponse HTTP.ok200
+
+decision L5 = decideUnlessMovedTemporarily (Right M5)
+decision L7 = const $ decideIfMethod "POST" (Right M7) (Left HTTP.notFound404)
+
+decision L13 = decideIfDateHeader Header.hIfModifiedSince (const $ Right L15) (Right M16)
+
+-- Tad duplicitive, but allows tracing to not miss decision point. Worth it?
+-- decision L13 = decideIfHeader Header.hIfModifiedSince (const $ Right L14) (Right M16)
+-- decision L14 = decideIfDateHeader Header.hIfModifiedSince (const $ Right L15) (Right M16)
+
+decision L15  = decisionBranch (\res -> (>) <$> ((fmap $ fromJust . parseHttpDate) `fmap` (getHeader Header.hIfModifiedSince)) <*> (liftIO (getCurrentTime >>= ((\t -> return $ Just t)))))
+                               (Right M16)
+                               (Right L17)
+
+decision L17  = decisionBranch (\res -> (>) <$> lastModified res <*> ((fmap $ fromJust . parseHttpDate) `fmap` (getHeader Header.hIfModifiedSince)))
+                               (Right M16)
+                               (Left HTTP.notModified304)
+
+decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
+
 -- 
 -- v3p3 :: Decision
 -- v3p3 = decisionBranch isConflict
@@ -303,14 +302,6 @@ decision K13 = decideETagMatch Header.hIfNoneMatch (Right J18) (Right L13)
 --     then v3i12 res
 --     else toResponse HTTP.preconditionFailed412
 -- 
--- v3i12 :: Decision
--- v3i12 = decideIfHeader Header.hIfNoneMatch
---                        v3i13
---                        v3l13
--- 
--- v3i13 :: BS.ByteString -> Decision
--- v3i13 "*" = v3j18
--- v3i13 inm = v3k13 inm
 -- 
 -- v3l13 :: Decision
 -- v3l13 = decideIfDateHeader Header.hIfModifiedSince

@@ -114,6 +114,14 @@ defaultResourceSpecs a =
       res <- run $ previouslyExisted a
       res `shouldBe` False
 
+    it "has movedPermanently = Nothing" $ do
+      res <- run $ movedPermanently a
+      res `shouldBe` Nothing
+
+    it "has movedTemporarily = Nothing" $ do
+      res <- run $ movedTemporarily a
+      res `shouldBe` Nothing
+
     it "has isConflict = False" $ do
       res <- run $ isConflict a
       res `shouldBe` False
@@ -121,7 +129,6 @@ defaultResourceSpecs a =
     it "has hasResponseBody = False" $ do
       res <- run $ hasResponseBody a
       res `shouldBe` False
-
 
     it "has multipleChoices = False" $ do
       res <- run $ multipleChoices a

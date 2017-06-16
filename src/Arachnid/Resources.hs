@@ -26,6 +26,7 @@ module Arachnid.Resources
 , deleteCompleted
 , previouslyExisted
 , movedPermanently
+, movedTemporarily
 , isConflict
 , contentTypesAccepted
 , hasResponseBody
@@ -129,6 +130,9 @@ class (Show a) => Resource a where
 
   movedPermanently :: a -> ResourceMonad (Maybe ByteString)
   movedPermanently = const $ return Nothing
+
+  movedTemporarily :: a -> ResourceMonad (Maybe ByteString)
+  movedTemporarily = const $ return Nothing
 
   isConflict :: a -> ResourceMonad Bool
   isConflict = const $ return False
