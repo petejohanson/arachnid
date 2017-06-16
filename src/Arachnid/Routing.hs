@@ -48,6 +48,7 @@ instance Resource RoutableResource where
   isConflict (RoutableResource a _) = isConflict a
   hasResponseBody (RoutableResource a _) = hasResponseBody a
   multipleChoices (RoutableResource a _) = multipleChoices a
+  allowMissingPost (RoutableResource a _) = allowMissingPost a
 
 (<:>) :: (Resource a, RouteCapture r) => r -> a -> RoutableResource
 (<:>) route res = RoutableResource res (toRouteElements route)

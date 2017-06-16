@@ -271,6 +271,14 @@ decision L17  = decisionBranch (\res -> (>) <$> lastModified res <*> ((fmap $ fr
                                (Right M16)
                                (Left HTTP.notModified304)
 
+decision M5 = const $ decideIfMethod "POST" (Right N5) (Left HTTP.gone410)
+
+decision M7 = decisionBranch allowMissingPost (Right N11) (Left HTTP.gone410)
+
+decision M16 = const $ decideIfMethod "DELETE" (Right M20) (Right N16)
+
+decision N5 = decisionBranch allowMissingPost (Right N11) (Left HTTP.notFound404)
+
 decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 -- 

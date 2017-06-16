@@ -133,3 +133,7 @@ defaultResourceSpecs a =
     it "has multipleChoices = False" $ do
       res <- run $ multipleChoices a
       res `shouldBe` False
+
+    it "has allowMissingPost = False" $ do
+      res <- run $ allowMissingPost a
+      res `shouldBe` False

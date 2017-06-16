@@ -31,6 +31,7 @@ module Arachnid.Resources
 , contentTypesAccepted
 , hasResponseBody
 , multipleChoices
+, allowMissingPost
 , Responsible
 , toResponse
 ) where
@@ -145,6 +146,9 @@ class (Show a) => Resource a where
 
   multipleChoices :: a -> ResourceMonad Bool
   multipleChoices = const $ return False
+
+  allowMissingPost :: a -> ResourceMonad Bool
+  allowMissingPost = const $ return False
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response
