@@ -15,7 +15,10 @@ import Arachnid.Resources
 data RootResource = RootResource deriving (Show)
 
 instance Resource RootResource where
-  serviceAvailable = const $ return False
+  -- serviceAvailable = const $ return False
+  exists = const $ return False
+  previouslyExisted = const $ return True
+  movedPermanently = const $ return $ Just $ pack "https://google.com/"
 
 data HelloWorld = HelloWorld deriving (Show)
 

@@ -134,6 +134,13 @@ decideETagMatch :: (Resource a) => Header.HeaderName -> DecisionResult -> Decisi
 decideETagMatch header pass fail = decisionBranch (\res -> (fromMaybe False) `fmap` ((pure $ pure elem) <**> generateETag res <**> ((pure $ pure parseETag) <**> (getHeader header)))) pass fail
   where (<**>) = liftA2 (<*>)
 
+decideUnlessMovedPermanently :: (Resource a) => DecisionResult -> a -> ResourceMonad DecisionResult
+decideUnlessMovedPermanently notMoved = decisionBranch isMoved (Left HTTP.movedPermanently301) notMoved
+  where isMoved res = (movedPermanently res) >>= mapUri
+        mapUri :: Maybe BS.ByteString -> ResourceMonad Bool
+        mapUri Nothing = return False
+        mapUri (Just uri) = (modify $ Resp.addHeader Header.hLocation uri) >>= (const $ return True)
+
 decision :: Decision
 decision B13 = decisionBranch serviceAvailable (Right B12) (Left HTTP.serviceUnavailable503)
 decision B12 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> knownMethods res) (Right B11) (Left HTTP.notImplemented501)
@@ -150,6 +157,7 @@ decision B10 = decisionBranch checkAllowed (Right B9) (Left HTTP.methodNotAllowe
               return False
 
 decision B9 = decisionBranch malformedRequest (Left HTTP.badRequest400) (Right B8)
+-- TODO Include WWW-Authenticate header in response!
 decision B8 = decisionBranch authorized (Right B7) (Left HTTP.unauthorized401)
 decision B7 = decisionBranch forbidden (Left HTTP.forbidden403) (Right B6)
 decision B6 = decisionBranch validContentHeaders (Right B5) (Left HTTP.notImplemented501)
@@ -199,7 +207,7 @@ decision F7 = (\res -> do
     Just _ -> return $ Right G7
   )
 
-decision G7 = decisionBranch resourceExists (Right G8) (Right H7)
+decision G7 = decisionBranch exists (Right G8) (Right H7)
 
 decision G8 = decideIfHeader Header.hIfMatch (const $ Right G9) (Right H10)
 
@@ -220,6 +228,8 @@ decision H12  = decisionBranch (\res -> (<) <$> ((fmap $ fromJust . parseHttpDat
                                (Left HTTP.preconditionFailed412)
 
 
+decision I4 = decideUnlessMovedPermanently (Right P3)
+
 decision I7 = const $ decideIfMethod "PUT" (Right I4) (Right K7)
 
 decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Right I13) (Right L13)
@@ -228,54 +238,8 @@ decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Right . ifN
         ifNoneMatchNodeMap _   = K13
 decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Left HTTP.notModified304) else (return $ Left HTTP.preconditionFailed412))
 
--- data AllowedMethods = AllowedMethods [HTTP.Method]
--- instance Responsible AllowedMethods where
---   toResponse (AllowedMethods allowed) =
---     return $ Wai.responseLBS HTTP.methodNotAllowed405 [("Allow", BS.concat $ intersperse "," allowed)] ""
--- 
--- v3b10 :: Decision
--- v3b10 res = do
---   m <- asks Wai.requestMethod
---   a <- allowedMethods res
--- 
---   if m `elem` a
---     then v3b9 res
---     else toResponse (AllowedMethods a)
-
--- v3b3 :: Decision
--- v3b3 res = do
---   m <- asks Wai.requestMethod
--- 
---   case m of
---     "OPTIONS" -> do
---       opts <- options res
---       return $ Wai.responseLBS HTTP.ok200 opts ""
---     _ -> v3c3 res
--- 
--- decideIfHeader :: (Resource a) => Header.HeaderName -> (BS.ByteString -> Decision) -> Decision -> a -> ResourceMonad Wai.Response
--- decideIfHeader header found missing res = do
---   h <- asks Wai.requestHeaders
--- 
---   case find ((==header) . fst) h of
---     Just a -> found (snd a) res
---     Nothing -> missing res
--- 
--- decideIfDateHeader :: (Resource a) => Header.HeaderName -> (UTCTime -> Decision) -> Decision -> a -> ResourceMonad Wai.Response
--- decideIfDateHeader header found missing = decideIfHeader header (decideIfDate found missing) missing
--- 
--- decideIfDate :: (UTCTime -> Decision) -> Decision -> BS.ByteString -> Decision
--- decideIfDate found missing s =
---   case parseHttpDate s of
---     Nothing -> missing
---     Just date -> found date
--- 
--- decideIfMethod :: (Resource a) => HTTP.Method -> Decision -> Decision -> a -> ResourceMonad Wai.Response
--- decideIfMethod method pass fail res = do
---   rm <- asks Wai.requestMethod
--- 
---   if rm == method
---     then pass res
---     else fail res
+decision K7 = decisionBranch previouslyExisted (Right K5) (Right L7)
+decision K5 = decideUnlessMovedPermanently (Right L7)
 -- 
 -- v3c3 :: Decision
 -- v3c3 = decideIfHeader Header.hAccept

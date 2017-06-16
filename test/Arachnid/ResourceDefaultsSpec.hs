@@ -90,8 +90,8 @@ defaultResourceSpecs a =
       res <- run $ encodingsProvided a
       (map fst) `fmap` res `shouldBe` Nothing -- fst map hack to avoid lack of Show/Eq instance for second element
 
-    it "has resourceExists = True" $ do
-      res <- run $ resourceExists a
+    it "has exists = True" $ do
+      res <- run $ exists a
       res `shouldBe` True
 
     it "has generateETag = Nothing" $ do
@@ -110,8 +110,8 @@ defaultResourceSpecs a =
       res <- run $ deleteCompleted a
       res `shouldBe` True
 
-    it "has resourcePreviouslyExisted = False" $ do
-      res <- run $ resourcePreviouslyExisted a
+    it "has previouslyExisted = False" $ do
+      res <- run $ previouslyExisted a
       res `shouldBe` False
 
     it "has isConflict = False" $ do

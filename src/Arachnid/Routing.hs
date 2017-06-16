@@ -37,12 +37,12 @@ instance Resource RoutableResource where
   languageAvailable l (RoutableResource a _) = languageAvailable l a
   charsetsProvided (RoutableResource a _) = charsetsProvided a
   encodingsProvided (RoutableResource a _) = encodingsProvided a
-  resourceExists (RoutableResource a _) = resourceExists a
+  exists (RoutableResource a _) = exists a
   generateETag (RoutableResource a _) = generateETag a
   lastModified (RoutableResource a _) = lastModified a
   deleteResource (RoutableResource a _) = deleteResource a
   deleteCompleted (RoutableResource a _) = deleteCompleted a
-  resourcePreviouslyExisted (RoutableResource a _) = resourcePreviouslyExisted a
+  previouslyExisted (RoutableResource a _) = previouslyExisted a
   movedPermanently (RoutableResource a _) = movedPermanently a
   isConflict (RoutableResource a _) = isConflict a
   hasResponseBody (RoutableResource a _) = hasResponseBody a

@@ -19,12 +19,12 @@ module Arachnid.Resources
 , languageAvailable
 , charsetsProvided
 , encodingsProvided
-, resourceExists
+, exists
 , generateETag
 , lastModified
 , deleteResource
 , deleteCompleted
-, resourcePreviouslyExisted
+, previouslyExisted
 , movedPermanently
 , isConflict
 , contentTypesAccepted
@@ -109,8 +109,8 @@ class (Show a) => Resource a where
   encodingsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
   encodingsProvided = const $ return Nothing
 
-  resourceExists :: a -> ResourceMonad Bool
-  resourceExists = const $ return True
+  exists :: a -> ResourceMonad Bool
+  exists = const $ return True
 
   generateETag :: a -> ResourceMonad (Maybe ByteString)
   generateETag = const $ return Nothing
@@ -124,8 +124,8 @@ class (Show a) => Resource a where
   deleteCompleted :: a -> ResourceMonad Bool
   deleteCompleted = const $ return True
 
-  resourcePreviouslyExisted :: a -> ResourceMonad Bool
-  resourcePreviouslyExisted = const $ return False
+  previouslyExisted :: a -> ResourceMonad Bool
+  previouslyExisted = const $ return False
 
   movedPermanently :: a -> ResourceMonad (Maybe ByteString)
   movedPermanently = const $ return Nothing
