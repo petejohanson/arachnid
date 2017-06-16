@@ -18,6 +18,7 @@ import Data.Time
 
 import qualified Data.Text as Text
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Char8 as C8
 import qualified Network.HTTP.Media as MT
 import qualified Network.HTTP.Types as HTTP
@@ -132,37 +133,44 @@ parseETag = BS.split (fromIntegral $ ord ',')
 decideETagMatch :: (Resource a) => Header.HeaderName -> DecisionResult -> DecisionResult -> a -> ResourceMonad DecisionResult
 decideETagMatch header pass fail = decisionBranch (\res -> (fromMaybe False) `fmap` ((pure $ pure elem) <**> generateETag res <**> ((pure $ pure parseETag) <**> (getHeader header)))) pass fail
   where (<**>) = liftA2 (<*>)
--- decideETagMatch header pass fail = decisionBranch (\res -> pure elem <*> generateETag res <*> (return [])) pass fail
--- decideETagMatch header pass fail = decisionBranch (\res -> liftA2 elem (generateETag res) ((fmap . fmap) (parseETag) (getHeader header))) pass fail
-   -- TODO: Need to strip whitespace too!
-   --let matchTags = BS.split (fromIntegral $ ord ',') h
--- 
---   etag <- generateETag res
---   case etag of
---     Nothing -> fail res
---     Just e ->
---       if e `elem` matchTags
---         then pass res
---         else fail res
 
 decision :: Decision
 decision B13 = decisionBranch serviceAvailable (Right B12) (Left HTTP.serviceUnavailable503)
 decision B12 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> knownMethods res) (Right B11) (Left HTTP.notImplemented501)
 decision B11 = decisionBranch requestURITooLong (Left HTTP.requestURITooLong414) (Right B10)
-decision B10 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> allowedMethods res) (Right B9) (Left HTTP.methodNotAllowed405) -- Include Allow header!
+decision B10 = decisionBranch checkAllowed (Right B9) (Left HTTP.methodNotAllowed405)
+  where checkAllowed res = do
+          m <- asks Wai.requestMethod
+          allowed <- allowedMethods res
+
+          if m `elem` allowed
+            then return True
+            else do
+              modify $ Resp.addHeader Header.hAllow allowed
+              return False
+
 decision B9 = decisionBranch malformedRequest (Left HTTP.badRequest400) (Right B8)
 decision B8 = decisionBranch authorized (Right B7) (Left HTTP.unauthorized401)
 decision B7 = decisionBranch forbidden (Left HTTP.forbidden403) (Right B6)
 decision B6 = decisionBranch validContentHeaders (Right B5) (Left HTTP.notImplemented501)
 decision B5 = decisionBranch knownContentType (Right B4) (Left HTTP.unsupportedMediaType415)
 decision B4 = decisionBranch requestEntityTooLarge (Left HTTP.requestEntityTooLarge413) (Right B3)
-decision B3 = decisionBranch (\res -> (=="OPTIONS") <$> asks Wai.requestMethod) (Left HTTP.ok200) (Right C3)
+decision B3 = decisionBranch isOptions (Left HTTP.ok200) (Right C3)
+  where isOptions res = do
+          m <- asks Wai.requestMethod
+
+          if m == "OPTIONS"
+            then do
+              opts <- options res
+              modify $ Resp.addHeaders opts
+              return True
+            else return False
 
 decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right D5)
 
 decision C4 = decisionBranch (\res -> (isJust `fmap` (MT.mapAccept <$> contentTypesProvided res <*> (fromJust `fmap` (getHeader Header.hAccept)))))
                               (Right D4)
-                              (Left HTTP.unsupportedMediaType415)
+                              (Left HTTP.notAcceptable406)
 decision D4 = decideIfHeader Header.hAcceptLanguage (const $ Right D5) (Right E5)
 
 decision D5 = decisionBranch (\res -> (fromJust `fmap` (getHeader Header.hAcceptLanguage) >>= (\l -> languageAvailable l res))) (Right E5) (Left HTTP.unsupportedMediaType415)
@@ -178,7 +186,7 @@ decision E6 = (\res -> do
   c <- getHeader Header.hAcceptCharset
 
   case MT.mapAccept <$> cs <*> c of
-    Nothing -> return $ Left HTTP.unsupportedMediaType415
+    Nothing -> return $ Left HTTP.notAcceptable406
     Just _ -> return $ Right F6
   )
 
@@ -193,7 +201,7 @@ decision F7 = (\res -> do
   e <- getHeader Header.hAcceptEncoding
 
   case MT.mapAccept <$> es <*> e of
-    Nothing -> return $ Left HTTP.unsupportedMediaType415
+    Nothing -> return $ Left HTTP.notAcceptable406
     Just _ -> return $ Right G7
   )
 
@@ -480,9 +488,9 @@ decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HE
 -- v3n16 = const $ toResponse HTTP.ok200
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
--- handle res req = (runStateT (runReaderT (decide decisionStart res) req) emptyResponse) >>= (\(status, response) -> toResponse status)
-handle res req = runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse >>= (\(status, response) -> return $ Wai.responseLBS status (fst $ Resp.responseHeaders response) (fromMaybe "" (Resp.body response)))
+handle res req = runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse >>= return . createResponse
    where decide node res = decision node res >>= processResult
-         processResult result = case result of
+         processResult result = case result of -- I really want to use Either short circuiting via fmap/>>= here!
                                   Right next -> decide next res
-                                  Left s  -> return $ s
+                                  Left s     -> return $ s
+         createResponse (status, respData) = Wai.responseLBS status (fst $ Resp.responseHeaders respData) (fromMaybe LBS.empty (Resp.body respData))
