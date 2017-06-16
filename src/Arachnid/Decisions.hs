@@ -9,7 +9,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Resource
 import Arachnid.Resources
-import Arachnid.Response (emptyResponse)
+import qualified Arachnid.Response as Resp
 import Arachnid.Internal.Date (parseHttpDate)
 import Data.Char (ord)
 import Data.List
@@ -24,7 +24,7 @@ import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Types.Header as Header
 import qualified Network.Wai as Wai
 
-data DecisionResult = Node DecisionNode | Status HTTP.Status deriving (Show)
+type DecisionResult = Either HTTP.Status DecisionNode
 
 data DecisionNode
   = B13
@@ -146,31 +146,31 @@ decideETagMatch header pass fail = decisionBranch (\res -> (fromMaybe False) `fm
 --         else fail res
 
 decision :: Decision
-decision B13 = decisionBranch serviceAvailable (Node B12) (Status HTTP.serviceUnavailable503)
-decision B12 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> knownMethods res) (Node B11) (Status HTTP.notImplemented501)
-decision B11 = decisionBranch requestURITooLong (Status HTTP.requestURITooLong414) (Node B10)
-decision B10 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> allowedMethods res) (Node B9) (Status HTTP.methodNotAllowed405) -- Include Allow header!
-decision B9 = decisionBranch malformedRequest (Status HTTP.badRequest400) (Node B8)
-decision B8 = decisionBranch authorized (Node B7) (Status HTTP.unauthorized401)
-decision B7 = decisionBranch forbidden (Status HTTP.forbidden403) (Node B6)
-decision B6 = decisionBranch validContentHeaders (Node B5) (Status HTTP.notImplemented501)
-decision B5 = decisionBranch knownContentType (Node B4) (Status HTTP.unsupportedMediaType415)
-decision B4 = decisionBranch requestEntityTooLarge (Status HTTP.requestEntityTooLarge413) (Node B3)
-decision B3 = decisionBranch (\res -> (=="OPTIONS") <$> asks Wai.requestMethod) (Status HTTP.ok200) (Node C3)
+decision B13 = decisionBranch serviceAvailable (Right B12) (Left HTTP.serviceUnavailable503)
+decision B12 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> knownMethods res) (Right B11) (Left HTTP.notImplemented501)
+decision B11 = decisionBranch requestURITooLong (Left HTTP.requestURITooLong414) (Right B10)
+decision B10 = decisionBranch (\res -> elem <$> asks Wai.requestMethod <*> allowedMethods res) (Right B9) (Left HTTP.methodNotAllowed405) -- Include Allow header!
+decision B9 = decisionBranch malformedRequest (Left HTTP.badRequest400) (Right B8)
+decision B8 = decisionBranch authorized (Right B7) (Left HTTP.unauthorized401)
+decision B7 = decisionBranch forbidden (Left HTTP.forbidden403) (Right B6)
+decision B6 = decisionBranch validContentHeaders (Right B5) (Left HTTP.notImplemented501)
+decision B5 = decisionBranch knownContentType (Right B4) (Left HTTP.unsupportedMediaType415)
+decision B4 = decisionBranch requestEntityTooLarge (Left HTTP.requestEntityTooLarge413) (Right B3)
+decision B3 = decisionBranch (\res -> (=="OPTIONS") <$> asks Wai.requestMethod) (Left HTTP.ok200) (Right C3)
 
-decision C3 = decideIfHeader Header.hAccept (const $ Node C4) (Node D5)
+decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right D5)
 
 decision C4 = decisionBranch (\res -> (isJust `fmap` (MT.mapAccept <$> contentTypesProvided res <*> (fromJust `fmap` (getHeader Header.hAccept)))))
-                              (Node D4)
-                              (Status HTTP.unsupportedMediaType415)
-decision D4 = decideIfHeader Header.hAcceptLanguage (const $ Node D5) (Node E5)
+                              (Right D4)
+                              (Left HTTP.unsupportedMediaType415)
+decision D4 = decideIfHeader Header.hAcceptLanguage (const $ Right D5) (Right E5)
 
-decision D5 = decisionBranch (\res -> (fromJust `fmap` (getHeader Header.hAcceptLanguage) >>= (\l -> languageAvailable l res))) (Node E5) (Status HTTP.unsupportedMediaType415)
+decision D5 = decisionBranch (\res -> (fromJust `fmap` (getHeader Header.hAcceptLanguage) >>= (\l -> languageAvailable l res))) (Right E5) (Left HTTP.unsupportedMediaType415)
 
 decision E5 = decideIfAcceptHeader Header.hAcceptCharset
                                    charsetsProvided
-                                   (Node E6)
-                                   (Node F6)
+                                   (Right E6)
+                                   (Right F6)
 
 -- Can we do this in one pass without the do? liftM somehow?
 decision E6 = (\res -> do
@@ -178,14 +178,14 @@ decision E6 = (\res -> do
   c <- getHeader Header.hAcceptCharset
 
   case MT.mapAccept <$> cs <*> c of
-    Nothing -> return $ Status HTTP.unsupportedMediaType415
-    Just _ -> return $ Node F6
+    Nothing -> return $ Left HTTP.unsupportedMediaType415
+    Just _ -> return $ Right F6
   )
 
 decision F6 = decideIfAcceptHeader Header.hAcceptEncoding
                                    encodingsProvided
-                                   (Node F7)
-                                   (Node G7)
+                                   (Right F7)
+                                   (Right G7)
 
 -- Can we do this in one pass without the do? liftM somehow?
 decision F7 = (\res -> do
@@ -193,38 +193,38 @@ decision F7 = (\res -> do
   e <- getHeader Header.hAcceptEncoding
 
   case MT.mapAccept <$> es <*> e of
-    Nothing -> return $ Status HTTP.unsupportedMediaType415
-    Just _ -> return $ Node G7
+    Nothing -> return $ Left HTTP.unsupportedMediaType415
+    Just _ -> return $ Right G7
   )
 
-decision G7 = decisionBranch resourceExists (Node G8) (Node H7)
+decision G7 = decisionBranch resourceExists (Right G8) (Right H7)
 
-decision G8 = decideIfHeader Header.hIfMatch (const $ Node G9) (Node H10)
+decision G8 = decideIfHeader Header.hIfMatch (const $ Right G9) (Right H10)
 
-decision G9 = const $ (getHeader Header.hIfMatch) >>= (return . Node . ifMatchNodeMap . fromJust)
+decision G9 = const $ (getHeader Header.hIfMatch) >>= (return . Right . ifMatchNodeMap . fromJust)
   where ifMatchNodeMap "*" = H10
         ifMatchNodeMap _   = G11
 
-decision G11 = decideETagMatch Header.hIfMatch (Node H10) (Status HTTP.preconditionFailed412)
+decision G11 = decideETagMatch Header.hIfMatch (Right H10) (Left HTTP.preconditionFailed412)
 
-decision H10 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Node H12) (Node I12)
+decision H10 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Right H12) (Right I12)
 
 -- Tad duplicitive, but allows tracing to not miss decision point. Worth it?
--- decision H10 = decideIfHeader Header.hIfUnmodifiedSince (const $ Node H11) (Node I12)
--- decision H11 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Node H12) (Node I12)
+-- decision H10 = decideIfHeader Header.hIfUnmodifiedSince (const $ Right H11) (Right I12)
+-- decision H11 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Right H12) (Right I12)
 
 decision H12  = decisionBranch (\res -> (<) <$> ((fmap $ fromJust . parseHttpDate) `fmap` (getHeader Header.hIfUnmodifiedSince)) <*> lastModified res)
-                               (Node I12)
-                               (Status HTTP.preconditionFailed412)
+                               (Right I12)
+                               (Left HTTP.preconditionFailed412)
 
 
-decision I7 = const $ decideIfMethod "PUT" (Node I4) (Node K7)
+decision I7 = const $ decideIfMethod "PUT" (Right I4) (Right K7)
 
-decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Node I13) (Node L13)
-decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Node . ifNoneMatchNodeMap . fromJust)
+decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Right I13) (Right L13)
+decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Right . ifNoneMatchNodeMap . fromJust)
   where ifNoneMatchNodeMap "*" = J18
         ifNoneMatchNodeMap _   = K13
-decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Status HTTP.notModified304) else (return $ Status HTTP.preconditionFailed412))
+decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Left HTTP.notModified304) else (return $ Left HTTP.preconditionFailed412))
 
 -- data AllowedMethods = AllowedMethods [HTTP.Method]
 -- instance Responsible AllowedMethods where
@@ -481,8 +481,8 @@ decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HE
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 -- handle res req = (runStateT (runReaderT (decide decisionStart res) req) emptyResponse) >>= (\(status, response) -> toResponse status)
-handle res req = evalStateT (runReaderT (decide decisionStart res) req) emptyResponse
+handle res req = runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse >>= (\(status, response) -> return $ Wai.responseLBS status (fst $ Resp.responseHeaders response) (fromMaybe "" (Resp.body response)))
    where decide node res = decision node res >>= processResult
          processResult result = case result of
-                                  Node next -> decide next res
-                                  Status s  -> toResponse s
+                                  Right next -> decide next res
+                                  Left s  -> return $ s
