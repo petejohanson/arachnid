@@ -279,6 +279,14 @@ decision M16 = const $ decideIfMethod "DELETE" (Right M20) (Right N16)
 
 decision N5 = decisionBranch allowMissingPost (Right N11) (Left HTTP.notFound404)
 
+-- Actually accept the content of the POST request
+-- decision N11 = decisionBranch redirect (Right N11) (Left HTTP.notFound404)
+
+-- Actually accept the content of the PUT request
+decision O14 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
+
+decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
+
 decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 -- 
