@@ -33,8 +33,8 @@ data ResponseData = ResponseData { headers :: Header.ResponseHeaders
 
 emptyResponse = ResponseData { headers = [], body = Nothing }
 
-responseHeaders :: ResponseData -> (Header.ResponseHeaders, ResponseData)
-responseHeaders d = (headers d, d)
+responseHeaders :: ResponseData -> Header.ResponseHeaders
+responseHeaders d = headers d
 
 addHeaders :: Header.ResponseHeaders -> ResponseData -> ResponseData
 addHeaders hs d = d { headers = (hs ++ headers d) }
@@ -42,11 +42,11 @@ addHeaders hs d = d { headers = (hs ++ headers d) }
 addHeader :: (HeaderValue v) => Header.HeaderName -> v -> ResponseData -> ResponseData
 addHeader n h d = d { headers = ((n, toHeader h):headers d) }
 
-getHeader :: Header.HeaderName -> ResponseData -> (Maybe BS.ByteString, ResponseData)
-getHeader h d = (snd `fmap` find ((==h) . fst) (headers d), d)
+getHeader :: Header.HeaderName -> ResponseData -> Maybe BS.ByteString
+getHeader h d = snd `fmap` find ((==h) . fst) (headers d)
 
 setBody :: LBS.ByteString -> ResponseData -> ResponseData
 setBody b d = d { body = Just b }
 
-hasBody ::  ResponseData -> (Bool, ResponseData)
-hasBody d = (isJust $ body d, d)
+hasBody ::  ResponseData -> Bool
+hasBody d = isJust $ body d

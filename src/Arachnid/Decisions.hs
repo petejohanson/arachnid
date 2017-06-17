@@ -289,6 +289,10 @@ decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
 
 decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
+decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= hasLocationHeader)
+  where hasLocationHeader Nothing  = (return $ Right P11)
+        hasLocationHeader (Just _) = (return $ Left HTTP.seeOther303)
+
 -- 
 -- v3p3 :: Decision
 -- v3p3 = decisionBranch isConflict
@@ -382,4 +386,4 @@ handle res req = runStateT (runReaderT (decide decisionStart res) req) Resp.empt
          processResult result = case result of -- I really want to use Either short circuiting via fmap/>>= here!
                                   Right next -> decide next res
                                   Left s     -> return $ s
-         createResponse (status, respData) = Wai.responseLBS status (fst $ Resp.responseHeaders respData) (fromMaybe LBS.empty (Resp.body respData))
+         createResponse (status, respData) = Wai.responseLBS status (Resp.responseHeaders respData) (fromMaybe LBS.empty (Resp.body respData))
