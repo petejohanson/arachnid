@@ -73,6 +73,7 @@ data DecisionNode
   | M7
   | M16
   | M20
+  | M20B
   | N5
   | N11
   | N16
@@ -276,6 +277,8 @@ decision M5 = const $ decideIfMethod "POST" (Right N5) (Left HTTP.gone410)
 decision M7 = decisionBranch allowMissingPost (Right N11) (Left HTTP.gone410)
 
 decision M16 = const $ decideIfMethod "DELETE" (Right M20) (Right N16)
+decision M20 = decisionBranch deleteResource (Right M20B) (Left HTTP.status500)
+decision M20B = decisionBranch deleteCompleted (Right O20) (Left HTTP.accepted202)
 
 decision N5 = decisionBranch allowMissingPost (Right N11) (Left HTTP.notFound404)
 
