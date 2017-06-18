@@ -290,6 +290,8 @@ decision O14 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
 
+decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Left HTTP.ok200)
+
 decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= hasLocationHeader)
@@ -317,68 +319,11 @@ decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= hasLocation
 -- v3p11 _ Error = toResponse HTTP.status500
 -- v3p11 r Success = v3o20 r
 -- 
--- v3h12 :: UTCTime -> Decision
--- v3h12 ius res = do
---   lm <- lastModified res
--- 
---   if Just ius < lm
---     then v3i12 res
---     else toResponse HTTP.preconditionFailed412
--- 
--- 
--- v3l13 :: Decision
--- v3l13 = decideIfDateHeader Header.hIfModifiedSince
---                            v3l15
---                            v3m16
--- 
--- v3j18 :: Decision
--- v3j18 _ = do
---   m <- asks Wai.requestMethod
--- 
---   if m `elem` ["GET", "HEAD"]
---     then toResponse HTTP.notModified304
---     else toResponse HTTP.preconditionFailed412
--- 
--- v3k13 :: BS.ByteString -> Decision
--- v3k13 = decideETagMatch v3j18 v3l13
--- 
--- v3l15 :: UTCTime -> Decision
--- v3l15 ims res = do
---   now <- lift $ lift getCurrentTime
---   if ims > now
---     then v3m16 res
---     else v3l17 ims res
--- 
--- v3l17 :: UTCTime -> Decision
--- v3l17 ims res = do
---   lm <- lastModified res
--- 
---   if Just ims < lm
---     then toResponse HTTP.notModified304
---     else v3m16 res
--- 
--- v3m16 :: Decision
--- v3m16 = decideIfMethod "DELETE" v3m20 v3n16
--- 
--- v3m20 :: Decision
--- v3m20 = decisionBranch deleteResource
---                        v3m20b
---                        (const $ toResponse HTTP.status500)
--- 
--- v3m20b :: Decision
--- v3m20b = decisionBranch deleteCompleted
---                        v3o20
---                        (const $ toResponse HTTP.accepted202)
 -- 
 -- v3o20 :: Decision
 -- v3o20 = decisionBranch hasResponseBody
 --                        v3o18
 --                        (const $ toResponse HTTP.noContent204)
--- 
--- v3o18 :: Decision
--- v3o18 = decisionBranch multipleChoices
---                        (const $ toResponse HTTP.status300)
---                        (const $ toResponse HTTP.ok200)
 -- 
 -- v3n16 :: Decision
 -- v3n16 = const $ toResponse HTTP.ok200
