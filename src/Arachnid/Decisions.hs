@@ -294,9 +294,9 @@ decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Left HTTP.o
 
 decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
-decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= hasLocationHeader)
-  where hasLocationHeader Nothing  = (return $ Right P11)
-        hasLocationHeader (Just _) = (return $ Left HTTP.seeOther303)
+decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= return . hasLocationHeader)
+  where hasLocationHeader Nothing  = (Right O20)
+        hasLocationHeader (Just _) = (Left HTTP.seeOther303)
 
 -- 
 -- v3p3 :: Decision
