@@ -7,13 +7,13 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: stack-cache-{{ checksum "arachnid.cabal" }}
+          key: stack-{{ checksum "arachnid.cabal" }}
       - run:
           command: stack setup
       - run:
           command: stack test --coverage
       - save_cache:
-          key: stack-cache-{{ checksum "arachnid.cabal" }}
+          key: stack-{{ checksum "arachnid.cabal" }}
           paths:
             - ~/.stack
             - .stack-work
