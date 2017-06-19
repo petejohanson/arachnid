@@ -15,6 +15,8 @@ jobs:
       - run:
           name: Upload test coverage
           command: |
+            apt-get update
+            apt-get install curl -y
             curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
             ./shc --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
       - save_cache:
