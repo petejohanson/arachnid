@@ -9,11 +9,14 @@ jobs:
       - restore_cache:
           key: stack-cache-{{ checksum "arachnid.cabal" }}
       - run:
-          name: stack-setup
           command: stack setup
       - run:
-          name: test
           command: stack test --coverage
+      - run:
+          name: Upload test coverage
+          command: |
+            curl -L https://github.com/rubik/stack-hpc-coveralls/releases/download/v0.0.4.0/shc-linux-x64-8.0.1.tar.bz2 | tar -xj
+            ./shc --repo-token ${COVERALLS_REPO_TOKEN} arachnid spec doctest
       - save_cache:
           key: stack-cache-{{ checksum "arachnid.cabal" }}
           paths:
