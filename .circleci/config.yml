@@ -8,10 +8,13 @@ jobs:
       - checkout
       - restore_cache:
           key: stack-cache-{{ checksum "arachnid.cabal" }}
+      - run:
+          name: stack-setup
+          command: stack setup
+      - run:
+          name: test
+          command: stack test --coverage
       - save_cache:
           key: stack-cache-{{ checksum "arachnid.cabal" }}
           paths:
             - ~/.stack
-      - run:
-          name: test
-          command: stack test --coverage
