@@ -1,0 +1,16 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: haskell:8.0
+    steps:
+      - checkout
+      - restore_cache:
+        key: stack-cache-{{ checksum "arachnid.cabal" }}
+      - save_cache:
+        key: stack-cache-{{ checksum "arachnid.cabal" }}
+        paths:
+          - ~/.stack
+      - run:
+        name: test
+        command: stack test --coverage
