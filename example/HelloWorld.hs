@@ -25,7 +25,7 @@ data HelloWorld = HelloWorld deriving (Show)
 instance Resource HelloWorld where
   allowedMethods = const $ return [HTTP.methodGet, HTTP.methodHead, HTTP.methodOptions]
   options = const $ return [(H.hAge, pack "1234")]
-  contentTypesProvided = const $ return [(pack "text" MT.// pack "plain", (return $ return $ pack "Testing"))]
+  contentTypesProvided = const $ return [(pack "text" MT.// pack "plain", return $ return $ pack "Testing")]
 
 data NoAuth = NoAuth deriving (Show)
 

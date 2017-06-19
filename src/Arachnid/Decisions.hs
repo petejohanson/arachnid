@@ -93,11 +93,11 @@ findHeader :: Header.HeaderName -> [Header.Header] -> Maybe BS.ByteString
 findHeader hn hs = snd `fmap` find ((==hn) . fst) hs
 
 getHeader :: Header.HeaderName -> ResourceMonad (Maybe BS.ByteString)
-getHeader header = asks Wai.requestHeaders >>= (return . findHeader header)
+getHeader header = fmap (findHeader header) (asks Wai.requestHeaders)
 
 decisionBranch :: (Resource a) => (a -> ResourceMonad Bool) -> DecisionResult -> DecisionResult -> a -> ResourceMonad DecisionResult
 decisionBranch check t f res =
-  check res >>= (\p -> (return (if p then t else f)))
+  check res >>= (\p -> return (if p then t else f))
 
 decideIfHeader :: (Resource a) => Header.HeaderName -> (BS.ByteString -> DecisionResult) -> DecisionResult -> a -> ResourceMonad DecisionResult
 decideIfHeader header found missing res = do
@@ -109,7 +109,7 @@ decideIfHeader header found missing res = do
 
 decideIfAcceptHeader :: (Resource r, MT.Accept a) => Header.HeaderName -> (r -> ResourceMonad (Maybe [(a, b)])) -> DecisionResult -> DecisionResult -> r -> ResourceMonad DecisionResult
 decideIfAcceptHeader hn hFunc pass fail res =
-  ((&&) <$> liftM isJust (getHeader hn) <*> liftM isJust (hFunc res)) >>= (\p -> if p then return pass else return fail)
+  ((&&) <$> fmap isJust (getHeader hn) <*> fmap isJust (hFunc res)) >>= (\p -> if p then return pass else return fail)
 
 decideIfDateHeader :: (Resource a) => Header.HeaderName -> (UTCTime -> DecisionResult) -> DecisionResult -> a -> ResourceMonad DecisionResult
 decideIfDateHeader header found missing = decideIfHeader header (decideIfDate found missing) missing
@@ -121,13 +121,13 @@ decideIfDate found missing s =
     Just date -> found date
 
 decideIfMethod :: HTTP.Method -> DecisionResult -> DecisionResult -> ResourceMonad DecisionResult
-decideIfMethod method pass fail = ((==) <$> asks Wai.requestMethod <*> (pure method)) >>= (\p -> if p then return pass else return fail)
+decideIfMethod method pass fail = ((==) <$> asks Wai.requestMethod <*> pure method) >>= (\p -> if p then return pass else return fail)
 
 parseETag :: BS.ByteString -> [BS.ByteString]
 parseETag = BS.split (fromIntegral $ ord ',')
 
 decideETagMatch :: (Resource a) => Header.HeaderName -> DecisionResult -> DecisionResult -> a -> ResourceMonad DecisionResult
-decideETagMatch header pass fail = decisionBranch (\res -> (fromMaybe False) `fmap` ((pure $ pure elem) <**> generateETag res <**> ((pure $ pure parseETag) <**> (getHeader header)))) pass fail
+decideETagMatch header = decisionBranch (\res -> fromMaybe False `fmap` (pure (pure elem) <**> generateETag res <**> (pure (pure parseETag) <**> getHeader header)))
   where (<**>) = liftA2 (<*>)
 
 decideUnlessMovedPermanently :: (Resource a) => DecisionResult -> a -> ResourceMonad DecisionResult
@@ -137,11 +137,11 @@ decideUnlessMovedTemporarily :: (Resource a) => DecisionResult -> a -> ResourceM
 decideUnlessMovedTemporarily = decideUnlessMoved movedTemporarily HTTP.status307
 
 decideUnlessMoved :: (Resource a) => (a -> ResourceMonad (Maybe BS.ByteString)) -> HTTP.Status -> DecisionResult -> a -> ResourceMonad DecisionResult
-decideUnlessMoved check movedStatus notMoved = decisionBranch isMoved (Left movedStatus) notMoved
-  where isMoved res = (check res) >>= mapUri
+decideUnlessMoved check movedStatus = decisionBranch isMoved (Left movedStatus)
+  where isMoved res = check res >>= mapUri
         mapUri :: Maybe BS.ByteString -> ResourceMonad Bool
         mapUri Nothing = return False
-        mapUri (Just uri) = (modify $ Resp.addHeader Header.hLocation uri) >>= (const $ return True)
+        mapUri (Just uri) = modify (Resp.addHeader Header.hLocation uri) >>= const (return True)
 
 decision :: Decision
 decision B13 = decisionBranch serviceAvailable (Right B12) (Left HTTP.serviceUnavailable503)
@@ -167,17 +167,19 @@ decision B5 = decisionBranch knownContentType (Right B4) (Left HTTP.unsupportedM
 decision B4 = decisionBranch requestEntityTooLarge (Left HTTP.requestEntityTooLarge413) (Right B3)
 decision B3 = decisionBranch isOptions (Left HTTP.ok200) (Right C3)
   where handleOptions _ False = return False
-        handleOptions res True = options res >>= (modify . Resp.addHeaders) >>= (const $ return True)
+        handleOptions res True = options res >>= (modify . Resp.addHeaders) >>= const (return True)
         isOptions res = (=="OPTIONS") <$> asks Wai.requestMethod >>= handleOptions res
 
 decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right D5)
 
-decision C4 = decisionBranch (\res -> (isJust `fmap` (MT.mapAccept <$> contentTypesProvided res <*> (fromJust `fmap` (getHeader Header.hAccept)))))
+decision C4 = decisionBranch (\res -> isJust `fmap` (MT.mapAccept <$> contentTypesProvided res <*> (fromJust `fmap` getHeader Header.hAccept)))
                               (Right D4)
                               (Left HTTP.notAcceptable406)
 decision D4 = decideIfHeader Header.hAcceptLanguage (const $ Right D5) (Right E5)
 
-decision D5 = decisionBranch (\res -> (fromJust `fmap` (getHeader Header.hAcceptLanguage) >>= (\l -> languageAvailable l res))) (Right E5) (Left HTTP.unsupportedMediaType415)
+decision D5 = decisionBranch (\res -> fromJust `fmap` getHeader Header.hAcceptLanguage >>= (`languageAvailable` res))
+                             (Right E5)
+                             (Left HTTP.unsupportedMediaType415)
 
 decision E5 = decideIfAcceptHeader Header.hAcceptCharset
                                    charsetsProvided
@@ -185,14 +187,13 @@ decision E5 = decideIfAcceptHeader Header.hAcceptCharset
                                    (Right F6)
 
 -- Can we do this in one pass without the do? liftM somehow?
-decision E6 = (\res -> do
+decision E6 = \res -> do
   cs <- charsetsProvided res
   c <- getHeader Header.hAcceptCharset
 
   case MT.mapAccept <$> cs <*> c of
     Nothing -> return $ Left HTTP.notAcceptable406
     Just _ -> return $ Right F6
-  )
 
 decision F6 = decideIfAcceptHeader Header.hAcceptEncoding
                                    encodingsProvided
@@ -200,20 +201,19 @@ decision F6 = decideIfAcceptHeader Header.hAcceptEncoding
                                    (Right G7)
 
 -- Can we do this in one pass without the do? liftM somehow?
-decision F7 = (\res -> do
+decision F7 = \res -> do
   es <- encodingsProvided res
   e <- getHeader Header.hAcceptEncoding
 
   case MT.mapAccept <$> es <*> e of
     Nothing -> return $ Left HTTP.notAcceptable406
     Just _ -> return $ Right G7
-  )
 
 decision G7 = decisionBranch exists (Right G8) (Right H7)
 
 decision G8 = decideIfHeader Header.hIfMatch (const $ Right G9) (Right H10)
 
-decision G9 = const $ (getHeader Header.hIfMatch) >>= (return . Right . ifMatchNodeMap . fromJust)
+decision G9 = const $ fmap (Right . ifMatchNodeMap . fromJust) (getHeader Header.hIfMatch)
   where ifMatchNodeMap "*" = H10
         ifMatchNodeMap _   = G11
 
@@ -232,7 +232,7 @@ decision H10 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Right H12) 
 -- decision H10 = decideIfHeader Header.hIfUnmodifiedSince (const $ Right H11) (Right I12)
 -- decision H11 = decideIfDateHeader Header.hIfUnmodifiedSince (const $ Right H12) (Right I12)
 
-decision H12  = decisionBranch (\res -> (<) <$> ((fmap $ fromJust . parseHttpDate) `fmap` (getHeader Header.hIfUnmodifiedSince)) <*> lastModified res)
+decision H12  = decisionBranch (\res -> (<) <$> (fmap (fromJust . parseHttpDate) `fmap` getHeader Header.hIfUnmodifiedSince) <*> lastModified res)
                                (Right I12)
                                (Left HTTP.preconditionFailed412)
 
@@ -243,11 +243,11 @@ decision I7 = const $ decideIfMethod "PUT" (Right I4) (Right K7)
 
 decision I12 = decideIfHeader Header.hIfNoneMatch (const $ Right I13) (Right L13)
 
-decision I13 = const $ (getHeader Header.hIfNoneMatch) >>= (return . Right . ifNoneMatchNodeMap . fromJust)
+decision I13 = const $ fmap (Right . ifNoneMatchNodeMap . fromJust) (getHeader Header.hIfNoneMatch)
   where ifNoneMatchNodeMap "*" = J18
         ifNoneMatchNodeMap _   = K13
 
-decision J18 = const $ asks Wai.requestMethod >>= (\m -> if m `elem` ["GET", "HEAD"] then (return $ Left HTTP.notModified304) else (return $ Left HTTP.preconditionFailed412))
+decision J18 = const $ fmap (\m -> if m `elem` ["GET", "HEAD"] then Left HTTP.notModified304 else Left HTTP.preconditionFailed412) (asks Wai.requestMethod)
 
 decision K5 = decideUnlessMovedPermanently (Right L5)
 
@@ -264,11 +264,11 @@ decision L13 = decideIfDateHeader Header.hIfModifiedSince (const $ Right L15) (R
 -- decision L13 = decideIfHeader Header.hIfModifiedSince (const $ Right L14) (Right M16)
 -- decision L14 = decideIfDateHeader Header.hIfModifiedSince (const $ Right L15) (Right M16)
 
-decision L15  = decisionBranch (\res -> (>) <$> ((fmap $ fromJust . parseHttpDate) `fmap` (getHeader Header.hIfModifiedSince)) <*> (liftIO (getCurrentTime >>= ((\t -> return $ Just t)))))
+decision L15  = decisionBranch (\res -> (>) <$> (fmap (fromJust . parseHttpDate) `fmap` getHeader Header.hIfModifiedSince) <*> liftIO (fmap Just getCurrentTime))
                                (Right M16)
                                (Right L17)
 
-decision L17  = decisionBranch (\res -> (>) <$> lastModified res <*> ((fmap $ fromJust . parseHttpDate) `fmap` (getHeader Header.hIfModifiedSince)))
+decision L17  = decisionBranch (\res -> (>) <$> lastModified res <*> (fmap (fromJust . parseHttpDate) `fmap` getHeader Header.hIfModifiedSince))
                                (Right M16)
                                (Left HTTP.notModified304)
 
@@ -294,16 +294,16 @@ decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
 
 decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Left HTTP.ok200)
 
-decision P3 = (\res -> isConflict res >>= handleConflict res)
+decision P3 = \res -> isConflict res >>= handleConflict res
   where handleConflict _ True = return $ Left HTTP.conflict409
         handleConflict res False = acceptContent (Right P11) res
 
-decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= return . hasLocationHeader)
-  where hasLocationHeader Nothing  = (Right O20)
-        hasLocationHeader (Just _) = (Left HTTP.seeOther303)
+decision P11 = const $ fmap hasLocationHeader (gets (Resp.getHeader Header.hLocation))
+  where hasLocationHeader Nothing  = Right O20
+        hasLocationHeader (Just _) = Left HTTP.seeOther303
 
 
-decision O20 = decisionBranch (return $ gets $ Resp.hasBody) (Right O18) (Left HTTP.noContent204)
+decision O20 = decisionBranch (return $ gets Resp.hasBody) (Right O18) (Left HTTP.noContent204)
 -- 
 -- v3n16 :: Decision
 -- v3n16 = const $ toResponse HTTP.ok200
@@ -313,17 +313,17 @@ acceptContent success res = do
   headers <- asks Wai.requestHeaders
   accepted <- contentTypesAccepted res
 
-  case fmap snd  (find ((==Header.hContentType) . fst) headers) >>= (MT.mapContent accepted) of
+  case fmap snd  (find ((==Header.hContentType) . fst) headers) >>= MT.mapContent accepted of
     Nothing -> return $ Left HTTP.unsupportedMediaType415
-    Just t -> (t >>= handleAcceptResult)
+    Just t -> t >>= handleAcceptResult
 
   where handleAcceptResult True = return success
         handleAcceptResult False = return $ Left HTTP.status500
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
-handle res req = runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse >>= return . createResponse
+handle res req = fmap createResponse (runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse)
    where decide node res = decision node res >>= processResult
          processResult result = case result of -- I really want to use Either short circuiting via fmap/>>= here!
                                   Right next -> decide next res
-                                  Left s     -> return $ s
+                                  Left s     -> return s
          createResponse (status, respData) = Wai.responseLBS status (Resp.responseHeaders respData) (fromMaybe LBS.empty (Resp.body respData))

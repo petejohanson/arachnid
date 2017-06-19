@@ -28,8 +28,8 @@ convertHTTPDateToUTCTime :: D.HTTPDate -> Maybe UTCTime
 convertHTTPDateToUTCTime hd = (\d -> UTCTime d (httpDateToDiffTime hd)) `fmap` httpDateToDay hd
 
 httpDateToDay :: D.HTTPDate -> Maybe Day
-httpDateToDay hd = (fromGregorianValid (toInteger $ D.hdYear hd) (D.hdMonth hd) (D.hdDay hd))
+httpDateToDay hd = fromGregorianValid (toInteger $ D.hdYear hd) (D.hdMonth hd) (D.hdDay hd)
 
 httpDateToDiffTime :: D.HTTPDate -> DiffTime
-httpDateToDiffTime hd = secondsToDiffTime $ toInteger $ ((((D.hdHour hd) * 60) + (D.hdMinute hd)) * 60 + (D.hdSecond hd))
+httpDateToDiffTime hd = secondsToDiffTime $ toInteger (((D.hdHour hd * 60) + D.hdMinute hd) * 60 + D.hdSecond hd)
 

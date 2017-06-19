@@ -6,7 +6,7 @@ import Data.Maybe
 import Data.Text (pack)
 
 spec :: Spec
-spec = do
+spec =
   describe "Routing" $ do
     describe "The root route" $ do
       it "matches the basic route" $
@@ -22,24 +22,24 @@ spec = do
       it "does not match a different string" $
         match [Segment "home"] [pack "users"] `shouldBe` Nothing
 
-    describe "A capture segment" $ do
+    describe "A capture segment" $
       it "Captures the value" $ do
         let
           captures = routeMatchCaptures `fmap` match ("home" </> Capture "name") [pack "home", pack "John"]
         captures `shouldBe` Just [("name", pack "John")]
 
-    describe "A rest segment" $ do
-      it "captures the remaining path items" $ do
+    describe "A rest segment" $
+      it "captures the remaining path items" $
         match [Rest] [pack "users", pack "123"] `shouldBe` Just RouteMatch { elements = [RestMatch [pack "users", pack "123"]] }
 
     describe "a complex route" $ do
       let route = "home" </> "users" </> Capture "id"
 
-      it "does not match other paths that differ" $ do
+      it "does not match other paths that differ" $
         match route [pack "home", pack "posts", pack "123"] `shouldBe` Nothing
 
-      it "Does not do partial matches" $ do
+      it "Does not do partial matches" $
         match route [pack "home", pack "users"] `shouldBe` Nothing
 
-      it "matches the expected path" $ do
+      it "matches the expected path" $
         match route [pack "home", pack "users", pack "123"] `shouldBe` Just RouteMatch { elements = [SegmentMatch $ pack "home", SegmentMatch $ pack "users", CaptureMatch "id" (pack "123")]}

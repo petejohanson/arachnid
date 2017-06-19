@@ -84,11 +84,11 @@ defaultResourceSpecs a =
 
     it "has charsetsProvided = Nothing" $ do
       res <- run $ charsetsProvided a
-      (map fst) `fmap` res `shouldBe` Nothing -- fst map hack to avoid lack of Show/Eq instance for second element
+      map fst `fmap` res `shouldBe` Nothing -- fst map hack to avoid lack of Show/Eq instance for second element
 
     it "has encodingsProvided = Nothing" $ do
       res <- run $ encodingsProvided a
-      (map fst) `fmap` res `shouldBe` Nothing -- fst map hack to avoid lack of Show/Eq instance for second element
+      map fst `fmap` res `shouldBe` Nothing -- fst map hack to avoid lack of Show/Eq instance for second element
 
     it "has exists = True" $ do
       res <- run $ exists a

@@ -34,13 +34,13 @@ data ResponseData = ResponseData { headers :: Header.ResponseHeaders
 emptyResponse = ResponseData { headers = [], body = Nothing }
 
 responseHeaders :: ResponseData -> Header.ResponseHeaders
-responseHeaders d = headers d
+responseHeaders = headers
 
 addHeaders :: Header.ResponseHeaders -> ResponseData -> ResponseData
-addHeaders hs d = d { headers = (hs ++ headers d) }
+addHeaders hs d = d { headers = hs ++ headers d }
 
 addHeader :: (HeaderValue v) => Header.HeaderName -> v -> ResponseData -> ResponseData
-addHeader n h d = d { headers = ((n, toHeader h):headers d) }
+addHeader n h d = d { headers = (n, toHeader h) : headers d }
 
 getHeader :: Header.HeaderName -> ResponseData -> Maybe BS.ByteString
 getHeader h d = snd `fmap` find ((==h) . fst) (headers d)
