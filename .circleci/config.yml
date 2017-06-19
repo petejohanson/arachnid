@@ -1,6 +1,7 @@
 version: 2
 jobs:
   build:
+    working_directory: ~/arachnid-build
     docker:
       - image: haskell:8.0
     steps:
