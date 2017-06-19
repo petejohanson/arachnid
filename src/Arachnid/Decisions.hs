@@ -285,48 +285,40 @@ decision N5 = decisionBranch allowMissingPost (Right N11) (Left HTTP.notFound404
 -- Actually accept the content of the POST request
 -- decision N11 = decisionBranch redirect (Right N11) (Left HTTP.notFound404)
 
--- Actually accept the content of the PUT request
+decision N16 = const $ decideIfMethod "POST" (Right N11) (Right O16)
+
+-- TODO Actually accept the content of the PUT request
 decision O14 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
 
 decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Left HTTP.ok200)
 
-decision P3 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
+decision P3 = (\res -> isConflict res >>= handleConflict res)
+  where handleConflict _ True = return $ Left HTTP.conflict409
+        handleConflict res False = acceptContent (Right P11) res
 
 decision P11 = const $ ((gets $ Resp.getHeader Header.hLocation) >>= return . hasLocationHeader)
   where hasLocationHeader Nothing  = (Right O20)
         hasLocationHeader (Just _) = (Left HTTP.seeOther303)
 
--- 
--- v3p3 :: Decision
--- v3p3 = decisionBranch isConflict
---                       (return $ toResponse HTTP.conflict409)
---                       (\res -> acceptContent res >>= v3p11 res)
--- 
--- acceptContent :: (Resource a) => a -> ResourceMonad ProcessingResult
--- acceptContent res = do
---   headers <- asks Wai.requestHeaders
---   accepted <- contentTypesAccepted res
--- 
---   case fmap snd  (find ((==Header.hContentType) . fst) headers) >>= (MT.mapContent accepted) of
---     Nothing -> return $ Halt HTTP.unsupportedMediaType415
---     Just t -> t
--- 
--- v3p11 :: (Resource a) => a -> ProcessingResult -> ResourceMonad Wai.Response
--- v3p11 _ (Halt status) = toResponse status
--- v3p11 _ (Created uri) = return $ Wai.responseLBS HTTP.created201 [(Header.hLocation, uri)] ""
--- v3p11 _ Error = toResponse HTTP.status500
--- v3p11 r Success = v3o20 r
--- 
--- 
--- v3o20 :: Decision
--- v3o20 = decisionBranch hasResponseBody
---                        v3o18
---                        (const $ toResponse HTTP.noContent204)
+
+decision O20 = decisionBranch (return $ gets $ Resp.hasBody) (Right O18) (Left HTTP.noContent204)
 -- 
 -- v3n16 :: Decision
 -- v3n16 = const $ toResponse HTTP.ok200
+
+acceptContent :: (Resource a) => DecisionResult -> a -> ResourceMonad DecisionResult
+acceptContent success res = do
+  headers <- asks Wai.requestHeaders
+  accepted <- contentTypesAccepted res
+
+  case fmap snd  (find ((==Header.hContentType) . fst) headers) >>= (MT.mapContent accepted) of
+    Nothing -> return $ Left HTTP.unsupportedMediaType415
+    Just t -> (t >>= handleAcceptResult)
+
+  where handleAcceptResult True = return success
+        handleAcceptResult False = return $ Left HTTP.status500
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res req = runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse >>= return . createResponse

@@ -138,7 +138,7 @@ class (Show a) => Resource a where
   isConflict :: a -> ResourceMonad Bool
   isConflict = const $ return False
 
-  contentTypesAccepted :: a -> ResourceMonad [(MT.MediaType, ResourceMonad ProcessingResult)]
+  contentTypesAccepted :: a -> ResourceMonad [(MT.MediaType, ResourceMonad Bool)]
   contentTypesAccepted = const $ return []
 
   hasResponseBody :: a -> ResourceMonad Bool
