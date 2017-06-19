@@ -21,3 +21,4 @@ jobs:
           key: stack-cache-{{ checksum "arachnid.cabal" }}
           paths:
             - ~/.stack
+            - .stack-work
