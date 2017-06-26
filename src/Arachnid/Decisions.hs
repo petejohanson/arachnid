@@ -165,22 +165,17 @@ decision B12 = decisionBranch isKnownMethod (Right B11) (Left HTTP.notImplemente
 
 decision B11 = decisionBranch requestURITooLong (Left HTTP.requestURITooLong414) (Right B10)
 
+-- TODO: This whole thing is messy. How better to add headers if not allowed?
 decision B10 = decisionBranch checkAllowed (Right B9) (Left HTTP.methodNotAllowed405)
-  where reqMethod :: ResourceMonadResult HTTP.Method
-        reqMethod = fmap Right (asks Wai.requestMethod)
+  where reqMethod :: ResourceMonad HTTP.Method
+        reqMethod = asks Wai.requestMethod
         handleAllowed :: ResourceResult [HTTP.Method] -> ResourceMonadResult Bool
         handleAllowed allowed =
-          reqMethod >>= (\m -> return $ elem <$> m <*> allowed) -- TODO: Add header!
+          reqMethod >>= (\m -> addAllowedHeader allowed $ fmap (elem m) allowed)
+        addAllowedHeader :: ResourceResult [HTTP.Method] -> ResourceResult Bool -> ResourceMonadResult Bool
+        addAllowedHeader (Right methods) (Right False) = fmap (const $ Right False) (modify $ Resp.addHeader Header.hAllow methods)
+        addAllowedHeader _ def = return def
         checkAllowed res = allowedMethods res >>= handleAllowed
---           m <- asks Wai.requestMethod
---           allowed <- allowedMethods res
--- 
---           allowed >>= \a ->
---             if m `elem` a
---               then return $ return True
---               else do
---                 modify $ Resp.addHeader Header.hAllow allowed
---                 return $ return False
 
 
 decision B9 = decisionBranch malformedRequest (Left HTTP.badRequest400) (Right B8)
