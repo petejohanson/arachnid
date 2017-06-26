@@ -135,7 +135,7 @@ parseETag :: BS.ByteString -> [BS.ByteString]
 parseETag = BS.split (fromIntegral $ ord ',')
 
 decideETagMatch :: (Resource a) => Header.HeaderName -> DecisionResult -> DecisionResult -> a -> ResourceMonad DecisionResult
-decideETagMatch header = decisionBranch (\res -> fmap (fromMaybe False) `fmap` ((generateETag res) >>= includeETag))
+decideETagMatch header = decisionBranch (\res -> fmap (fromMaybe False) `fmap` (generateETag res >>= includeETag))
   where includeETag :: ResourceResult (Maybe BS.ByteString) -> ResourceMonadResult (Maybe Bool)
         includeETag etag = fmap (\h -> fmap (compareETags h) etag ) (getHeader header)
         compareETags :: Maybe BS.ByteString -> Maybe BS.ByteString -> Maybe Bool
