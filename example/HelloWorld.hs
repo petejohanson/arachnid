@@ -15,22 +15,22 @@ import Arachnid.Resources
 data RootResource = RootResource deriving (Show)
 
 instance Resource RootResource where
-  -- serviceAvailable = const $ return False
-  exists = const $ return False
-  previouslyExisted = const $ return True
-  movedPermanently = const $ return $ Just $ pack "https://google.com/"
+  -- serviceAvailable = const $ return $ Left $ HTTP.mkStatus 451 (pack "Unavailable For Legal Reasons")
+  exists = const $ return $ return False
+  previouslyExisted = const $ return $ return True
+  movedPermanently = const $ return $ return $ Just $ pack "https://google.com/"
 
 data HelloWorld = HelloWorld deriving (Show)
 
 instance Resource HelloWorld where
-  allowedMethods = const $ return [HTTP.methodGet, HTTP.methodHead, HTTP.methodOptions]
-  options = const $ return [(H.hAge, pack "1234")]
-  contentTypesProvided = const $ return [(pack "text" MT.// pack "plain", return $ return $ pack "Testing")]
+  allowedMethods = const $ return $ return [HTTP.methodGet, HTTP.methodHead, HTTP.methodOptions]
+  options = const $ return$ return  [(H.hAge, pack "1234")]
+  contentTypesProvided = const $ return $ return [(pack "text" MT.// pack "plain", return $ return $ pack "Testing")]
 
 data NoAuth = NoAuth deriving (Show)
 
 instance Resource NoAuth where
-  authorized = const $ return False
+  authorized = const $ return $ return False
 
 app :: Application
 app = makeApp

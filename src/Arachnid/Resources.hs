@@ -3,7 +3,8 @@
 module Arachnid.Resources
 ( ResourceMonad
 , Resource
-, ProcessingResult (Halt, Error, Success, Created)
+, ResourceResult
+, ResourceMonadResult
 , serviceAvailable
 , knownMethods
 , requestURITooLong
@@ -52,7 +53,7 @@ import qualified Network.HTTP.Media as MT
 
 type ResourceMonad = ReaderT Wai.Request (StateT ResponseData (ResourceT IO))
 
-data ProcessingResult = Halt HTTP.Status | Success | Error | Created ByteString deriving (Show)
+type ResourceResult v = Either HTTP.Status v
 
 http_1_1_Methods :: [HTTP.Method]
 http_1_1_Methods = [ "GET"
@@ -65,90 +66,92 @@ http_1_1_Methods = [ "GET"
                    , "TRACE"
                    ]
 
+type ResourceMonadResult v = ResourceMonad (ResourceResult v)
+
 class (Show a) => Resource a where
-  serviceAvailable :: a -> ResourceMonad Bool
-  serviceAvailable _ = return True
+  serviceAvailable :: a -> ResourceMonadResult Bool
+  serviceAvailable _ = return (return True)
 
-  knownMethods :: a -> ResourceMonad [HTTP.Method]
-  knownMethods = const $ return http_1_1_Methods
+  knownMethods :: a -> ResourceMonadResult [HTTP.Method]
+  knownMethods = const $ return (return http_1_1_Methods)
 
-  requestURITooLong :: a -> ResourceMonad Bool
-  requestURITooLong = const $ return False
+  requestURITooLong :: a -> ResourceMonadResult Bool
+  requestURITooLong = const $ return (return False)
 
-  allowedMethods :: a -> ResourceMonad [HTTP.Method]
-  allowedMethods = const $ return [ "GET", "HEAD" ]
+  allowedMethods :: a -> ResourceMonadResult [HTTP.Method]
+  allowedMethods = const $ return (return ["GET", "HEAD"])
 
-  malformedRequest :: a -> ResourceMonad Bool
-  malformedRequest = const $ return False
+  malformedRequest :: a -> ResourceMonadResult Bool
+  malformedRequest = const $ return (return False)
 
-  authorized :: a -> ResourceMonad Bool
-  authorized = const $ return True
+  authorized :: a -> ResourceMonadResult Bool
+  authorized = const $ return (return True)
 
-  forbidden :: a -> ResourceMonad Bool
-  forbidden = const $ return False
+  forbidden :: a -> ResourceMonadResult Bool
+  forbidden = const $ return (return False)
 
-  validContentHeaders :: a -> ResourceMonad Bool
-  validContentHeaders = const $ return True
+  validContentHeaders :: a -> ResourceMonadResult Bool
+  validContentHeaders = const $ return (return True)
 
-  knownContentType :: a -> ResourceMonad Bool
-  knownContentType = const $ return True
+  knownContentType :: a -> ResourceMonadResult Bool
+  knownContentType = const $ return (return True)
 
-  requestEntityTooLarge :: a -> ResourceMonad Bool
-  requestEntityTooLarge = const $ return False
+  requestEntityTooLarge :: a -> ResourceMonadResult Bool
+  requestEntityTooLarge = const $ return (return False)
 
-  options :: a -> ResourceMonad HTTP.ResponseHeaders
-  options = const $ return []
+  options :: a -> ResourceMonadResult HTTP.ResponseHeaders
+  options = const $ return (return [])
 
-  contentTypesProvided :: a -> ResourceMonad [(MT.MediaType, ResourceMonad (IO ByteString))]
-  contentTypesProvided = const $ return []
+  contentTypesProvided :: a -> ResourceMonadResult [(MT.MediaType, ResourceMonad (IO ByteString))]
+  contentTypesProvided = const $ return (return [])
 
-  languageAvailable :: ByteString -> a -> ResourceMonad Bool
-  languageAvailable = const $ const $ return True
+  languageAvailable :: ByteString -> a -> ResourceMonadResult Bool
+  languageAvailable = const $ const $ return (return True)
 
-  charsetsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
-  charsetsProvided = const $ return Nothing
+  charsetsProvided :: a -> ResourceMonadResult (Maybe [(ByteString, Word8 -> Word8)])
+  charsetsProvided = const $ return (return Nothing)
 
-  encodingsProvided :: a -> ResourceMonad (Maybe [(ByteString, Word8 -> Word8)])
-  encodingsProvided = const $ return Nothing
+  encodingsProvided :: a -> ResourceMonadResult (Maybe [(ByteString, Word8 -> Word8)])
+  encodingsProvided = const $ return (return Nothing)
 
-  exists :: a -> ResourceMonad Bool
-  exists = const $ return True
+  exists :: a -> ResourceMonadResult Bool
+  exists = const $ return (return True)
 
-  generateETag :: a -> ResourceMonad (Maybe ByteString)
-  generateETag = const $ return Nothing
+  generateETag :: a -> ResourceMonadResult (Maybe ByteString)
+  generateETag = const $ return (return Nothing)
 
-  lastModified :: a -> ResourceMonad (Maybe UTCTime)
-  lastModified = const $ return Nothing
+  lastModified :: a -> ResourceMonadResult (Maybe UTCTime)
+  lastModified = const $ return (return Nothing)
 
-  deleteResource :: a -> ResourceMonad Bool
-  deleteResource = const $ return True
+  deleteResource :: a -> ResourceMonadResult Bool
+  deleteResource = const $ return (return True)
 
-  deleteCompleted :: a -> ResourceMonad Bool
-  deleteCompleted = const $ return True
+  deleteCompleted :: a -> ResourceMonadResult Bool
+  deleteCompleted = const $ return (return True)
 
-  previouslyExisted :: a -> ResourceMonad Bool
-  previouslyExisted = const $ return False
+  previouslyExisted :: a -> ResourceMonadResult Bool
+  previouslyExisted = const $ return (return False)
 
-  movedPermanently :: a -> ResourceMonad (Maybe ByteString)
-  movedPermanently = const $ return Nothing
+  movedPermanently :: a -> ResourceMonadResult (Maybe ByteString)
+  movedPermanently = const $ return (return Nothing)
 
-  movedTemporarily :: a -> ResourceMonad (Maybe ByteString)
-  movedTemporarily = const $ return Nothing
+  movedTemporarily :: a -> ResourceMonadResult (Maybe ByteString)
+  movedTemporarily = const $ return (return Nothing)
 
-  isConflict :: a -> ResourceMonad Bool
-  isConflict = const $ return False
+  isConflict :: a -> ResourceMonadResult Bool
+  isConflict = const $ return (return False)
 
-  contentTypesAccepted :: a -> ResourceMonad [(MT.MediaType, ResourceMonad Bool)]
+  contentTypesAccepted :: a -> ResourceMonad [(MT.MediaType, ResourceMonadResult Bool)]
   contentTypesAccepted = const $ return []
 
-  hasResponseBody :: a -> ResourceMonad Bool
-  hasResponseBody = const $ return False
+  hasResponseBody :: a -> ResourceMonadResult Bool
+  hasResponseBody = const $ return (return False)
 
-  multipleChoices :: a -> ResourceMonad Bool
-  multipleChoices = const $ return False
+  multipleChoices :: a -> ResourceMonadResult Bool
+  multipleChoices = const $ return (return False)
 
-  allowMissingPost :: a -> ResourceMonad Bool
-  allowMissingPost = const $ return False
+  allowMissingPost :: a -> ResourceMonadResult Bool
+  allowMissingPost = const $ return (return False)
 
 class Responsible a where
   toResponse :: a -> ResourceMonad Wai.Response

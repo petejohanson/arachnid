@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RankNTypes, KindSignatures, OverloadedStrings #-}
+{-# LANGUAGE FlexibleContexts, RankNTypes, OverloadedStrings #-}
 module Arachnid.ResourceDefaultsSpec where
 
 import Control.Monad.Trans.Resource
@@ -13,14 +13,17 @@ import Network.Wai
 data TestResource = TestResource deriving (Show)
 instance Resource TestResource
 
-run :: forall (m :: * -> *) a.
-       MonadBaseControl IO m =>
+getResult :: ResourceResult a -> a
+getResult (Right a) = a
+getResult _ = error "UGH"
+
+run :: MonadBaseControl IO f =>
        ReaderT
-         Request (StateT ResponseData (ResourceT m)) a
-       -> m a
+         Request (StateT ResponseData (ResourceT f)) (ResourceResult b)
+       -> f b
 
 run res =
-  runResourceT $ evalStateT (runReaderT res defaultRequest) emptyResponse
+  fmap getResult $ runResourceT $ evalStateT (runReaderT res defaultRequest) emptyResponse
 
 spec :: Spec
 spec = describe "Default resources" $ do
