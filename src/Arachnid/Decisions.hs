@@ -212,9 +212,12 @@ decision C4 = decisionBranch isAcceptable
                              (Right D4)
                              (Left HTTP.notAcceptable406)
   where isAcceptable :: (Resource a) => a -> ResourceMonadResult Bool
-        isAcceptable res = checkAccept <$> fmap fromJust (getHeader Header.hAccept) <*> contentTypesProvided res
-        checkAccept :: BS.ByteString -> ResourceResult [(MT.MediaType, IO LBS.ByteString)] -> ResourceResult Bool
-        checkAccept h = fmap (\a -> isJust $ MT.mapAccept a h)
+        isAcceptable res = checkAccept <$> fmap fromJust (getHeader Header.hAccept) <*> contentTypesProvided res >>= mapRes recordSelected
+        recordSelected :: Maybe MT.MediaType -> ResourceMonad Bool
+        recordSelected (Just ct) = lift (modify $ Resp.setChosenContentType (Just ct)) >> return True
+        recordSelected Nothing = return False
+        checkAccept :: BS.ByteString -> ResourceResult [(MT.MediaType, IO LBS.ByteString)] -> ResourceResult (Maybe MT.MediaType)
+        checkAccept h = fmap (\a -> MT.matchAccept (fmap fst a) h)
 
 decision D4 = decideIfHeader Header.hAcceptLanguage (const $ Right D5) (Right E5)
 
@@ -347,21 +350,26 @@ decision O14 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
 
--- TODO Output response! Encode the body!
 decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Right O18a)
 
-decision O18a = \res -> addETag res >> addLastModified res >> addExpires res >> encodeBody res >> success
+-- TODO Generate body for GET/HEAD only
+decision O18a = \res -> addETag res >> addLastModified res >> addExpires res >> addContentType >> encodeBody res >> success
   where addETag res = generateETag res >>= addHeader Header.hETag
         addLastModified res = lastModified res >>= addHeader Header.hLastModified
         addExpires res = expires res >>= addHeader Header.hExpires
+        addContentType :: ResourceMonadResult ()
+        addContentType = gets Resp.chosenContentType >>= (\ct -> fmap Right (addContentHeader ct))
+        addContentHeader :: Maybe MT.MediaType -> ResourceMonad ()
+        addContentHeader (Just v) = modify $ Resp.addHeader Header.hContentType v
+        addContentHeader _ = return ()
         encodeBody :: (Resource a) => a -> ResourceMonadResult ()
         encodeBody res = getBody res >>= mapRes setBody
         setBody :: Maybe (IO LBS.ByteString) -> ResourceMonad ()
         setBody (Just body) = liftIO body >>= lift . modify . Resp.setBody
         setBody _ = return ()
-        addHeader :: (Resp.HeaderValue v) => Header.HeaderName -> ResourceResult (Maybe v) -> ResourceMonadResult ()
+        addHeader :: (MT.RenderHeader v) => Header.HeaderName -> ResourceResult (Maybe v) -> ResourceMonadResult ()
         addHeader h = mapRes $ realAddHeader h
-        realAddHeader :: (Resp.HeaderValue v) => Header.HeaderName -> Maybe v -> ResourceMonad ()
+        realAddHeader :: (MT.RenderHeader v) => Header.HeaderName -> Maybe v -> ResourceMonad ()
         realAddHeader h (Just v) = lift $ modify $ Resp.addHeader h v
         realAddHeader _ _ = return ()
         success = return $ Left HTTP.ok200
