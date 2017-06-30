@@ -75,6 +75,7 @@ executable helloWorld
                      , arachnid
                      , warp
                      , wai
+                     , time
                      , http-types
                      , http-media
                      , bytestring

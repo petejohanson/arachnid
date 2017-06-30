@@ -105,6 +105,10 @@ defaultResourceSpecs a =
       res <- run $ lastModified a
       res `shouldBe` Nothing
 
+    it "has expires = Nothing" $ do
+      res <- run $ expires a
+      res `shouldBe` Nothing
+
     it "has deleteResource = True" $ do
       res <- run $ deleteResource a
       res `shouldBe` True

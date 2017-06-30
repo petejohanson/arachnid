@@ -81,10 +81,20 @@ data DecisionNode
   | O14
   | O16
   | O18
+  | O18a
   | O20
   | P3
   | P11
   deriving (Show)
+
+mapRes :: (a -> ResourceMonad b) -> ResourceResult a -> ResourceMonadResult b
+mapRes f (Left s) = return $ Left s
+mapRes f (Right r) = fmap Right (f r)
+
+getBody :: (Resource a) => a -> ResourceMonadResult (Maybe (IO LBS.ByteString))
+getBody res = contentTypesProvided res >>= mapRes getContent
+  where getContent :: [(MT.MediaType, IO LBS.ByteString)] -> ResourceMonad (Maybe (IO LBS.ByteString))
+        getContent opts = getHeader Header.hAccept >>= (\h -> return $ join $ MT.mapAccept <$> return opts <*> h)
 
 decisionStart = B13
 
@@ -203,7 +213,7 @@ decision C4 = decisionBranch isAcceptable
                              (Left HTTP.notAcceptable406)
   where isAcceptable :: (Resource a) => a -> ResourceMonadResult Bool
         isAcceptable res = checkAccept <$> fmap fromJust (getHeader Header.hAccept) <*> contentTypesProvided res
-        checkAccept :: BS.ByteString -> ResourceResult [(MT.MediaType, ResourceMonad (IO BS.ByteString))] -> ResourceResult Bool
+        checkAccept :: BS.ByteString -> ResourceResult [(MT.MediaType, IO LBS.ByteString)] -> ResourceResult Bool
         checkAccept h = fmap (\a -> isJust $ MT.mapAccept a h)
 
 decision D4 = decideIfHeader Header.hAcceptLanguage (const $ Right D5) (Right E5)
@@ -337,7 +347,24 @@ decision O14 = decisionBranch isConflict (Left HTTP.conflict409) (Right P11)
 
 decision O16 = const $ decideIfMethod "PUT" (Right O14) (Right O18)
 
-decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Left HTTP.ok200)
+-- TODO Output response! Encode the body!
+decision O18 = decisionBranch multipleChoices (Left HTTP.status300) (Right O18a)
+
+decision O18a = \res -> addETag res >> addLastModified res >> addExpires res >> encodeBody res >> success
+  where addETag res = generateETag res >>= addHeader Header.hETag
+        addLastModified res = lastModified res >>= addHeader Header.hLastModified
+        addExpires res = expires res >>= addHeader Header.hExpires
+        encodeBody :: (Resource a) => a -> ResourceMonadResult ()
+        encodeBody res = getBody res >>= mapRes setBody
+        setBody :: Maybe (IO LBS.ByteString) -> ResourceMonad ()
+        setBody (Just body) = liftIO body >>= lift . modify . Resp.setBody
+        setBody _ = return ()
+        addHeader :: (Resp.HeaderValue v) => Header.HeaderName -> ResourceResult (Maybe v) -> ResourceMonadResult ()
+        addHeader h = mapRes $ realAddHeader h
+        realAddHeader :: (Resp.HeaderValue v) => Header.HeaderName -> Maybe v -> ResourceMonad ()
+        realAddHeader h (Just v) = lift $ modify $ Resp.addHeader h v
+        realAddHeader _ _ = return ()
+        success = return $ Left HTTP.ok200
 
 decision P3 = \res -> isConflict res >>= mapConflict res
   where mapConflict :: (Resource a) => a -> ResourceResult Bool -> ResourceMonad DecisionResult

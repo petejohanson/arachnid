@@ -8,6 +8,8 @@ import           Network.Wai.Handler.Warp
 
 import Control.Monad.Reader
 import Data.ByteString.Char8 (pack)
+import qualified Data.ByteString.Lazy.Char8 as LBS
+import Data.Time
 import Arachnid
 import Arachnid.Routing
 import Arachnid.Resources
@@ -24,8 +26,9 @@ data HelloWorld = HelloWorld deriving (Show)
 
 instance Resource HelloWorld where
   allowedMethods = const $ return $ return [HTTP.methodGet, HTTP.methodHead, HTTP.methodOptions]
+  expires = const $ return $ return $ return (UTCTime (fromGregorian 2018 1 1) 0)
   options = const $ return$ return  [(H.hAge, pack "1234")]
-  contentTypesProvided = const $ return $ return [(pack "text" MT.// pack "plain", return $ return $ pack "Testing")]
+  contentTypesProvided = const $ return $ return [(pack "text" MT.// pack "plain", return $ LBS.pack "Testing")]
 
 data NoAuth = NoAuth deriving (Show)
 

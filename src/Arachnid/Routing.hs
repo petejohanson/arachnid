@@ -40,6 +40,7 @@ instance Resource RoutableResource where
   exists (RoutableResource a _) = exists a
   generateETag (RoutableResource a _) = generateETag a
   lastModified (RoutableResource a _) = lastModified a
+  expires (RoutableResource a _) = expires a
   deleteResource (RoutableResource a _) = deleteResource a
   deleteCompleted (RoutableResource a _) = deleteCompleted a
   previouslyExisted (RoutableResource a _) = previouslyExisted a

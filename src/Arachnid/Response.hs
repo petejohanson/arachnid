@@ -4,9 +4,11 @@ module Arachnid.Response
 ( ResponseData
 , emptyResponse
 , responseHeaders
+, HeaderValue
 , addHeaders
 , addHeader
 , getHeader
+, setBody
 , hasBody
 , body
 ) where
@@ -17,6 +19,8 @@ import Data.List
 import Data.Maybe
 import qualified Network.HTTP.Types.Header as Header
 import qualified Network.HTTP.Types.Method as M
+import Data.Time (UTCTime)
+import Arachnid.Internal.Date (formatHttpDate)
 
 class HeaderValue a where
   toHeader :: a -> BS.ByteString
@@ -26,6 +30,9 @@ instance (HeaderValue a) => HeaderValue [a] where
 
 instance HeaderValue BS.ByteString where
   toHeader m = m
+
+instance HeaderValue UTCTime where
+  toHeader = formatHttpDate
 
 data ResponseData = ResponseData { headers :: Header.ResponseHeaders
                                  , body    :: Maybe LBS.ByteString

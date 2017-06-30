@@ -23,6 +23,7 @@ module Arachnid.Resources
 , exists
 , generateETag
 , lastModified
+, expires
 , deleteResource
 , deleteCompleted
 , previouslyExisted
@@ -43,6 +44,7 @@ import Data.Word
 import Data.Text
 import Data.Time
 import Data.ByteString
+import qualified Data.ByteString.Lazy as LBS
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Resource
@@ -102,7 +104,7 @@ class (Show a) => Resource a where
   options :: a -> ResourceMonadResult HTTP.ResponseHeaders
   options = const $ return (return [])
 
-  contentTypesProvided :: a -> ResourceMonadResult [(MT.MediaType, ResourceMonad (IO ByteString))]
+  contentTypesProvided :: a -> ResourceMonadResult [(MT.MediaType, IO LBS.ByteString)]
   contentTypesProvided = const $ return (return [])
 
   languageAvailable :: ByteString -> a -> ResourceMonadResult Bool
@@ -122,6 +124,9 @@ class (Show a) => Resource a where
 
   lastModified :: a -> ResourceMonadResult (Maybe UTCTime)
   lastModified = const $ return (return Nothing)
+
+  expires :: a -> ResourceMonadResult (Maybe UTCTime)
+  expires = const $ return (return Nothing)
 
   deleteResource :: a -> ResourceMonadResult Bool
   deleteResource = const $ return (return True)
