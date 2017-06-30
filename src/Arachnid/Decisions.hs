@@ -358,7 +358,7 @@ decision O18a = \res -> addETag res >> addLastModified res >> addExpires res >> 
         addLastModified res = lastModified res >>= addHeader Header.hLastModified
         addExpires res = expires res >>= addHeader Header.hExpires
         addContentType :: ResourceMonadResult ()
-        addContentType = gets Resp.chosenContentType >>= (\ct -> fmap Right (addContentHeader ct))
+        addContentType = gets Resp.chosenContentType >>= fmap Right . addContentHeader
         addContentHeader :: Maybe MT.MediaType -> ResourceMonad ()
         addContentHeader (Just v) = modify $ Resp.addHeader Header.hContentType v
         addContentHeader _ = return ()
