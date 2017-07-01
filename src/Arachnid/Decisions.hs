@@ -41,6 +41,7 @@ data DecisionNode
   | B4
   | B3
   | C3
+  | C3a
   | C4
   | D4
   | D5
@@ -94,7 +95,7 @@ mapRes f (Right r) = fmap Right (f r)
 getBody :: (Resource a) => a -> ResourceMonadResult (Maybe (IO LBS.ByteString))
 getBody res = contentTypesProvided res >>= mapRes getContent
   where getContent :: [(MT.MediaType, IO LBS.ByteString)] -> ResourceMonad (Maybe (IO LBS.ByteString))
-        getContent opts = getHeader Header.hAccept >>= (\h -> return $ join $ MT.mapAccept <$> return opts <*> h)
+        getContent opts = gets Resp.chosenContentType >>= (\h -> return $ join $ MT.mapAcceptMedia <$> return opts <*> fmap MT.renderHeader h)
 
 decisionStart = B13
 
@@ -206,7 +207,10 @@ decision B3 = decisionBranch isOptions (Left HTTP.ok200) (Right C3)
         isOptions :: (Resource a) => a -> ResourceMonadResult Bool
         isOptions res = (=="OPTIONS") <$> asks Wai.requestMethod >>= handleOptions res
 
-decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right D5)
+decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right C3a)
+decision C3a = \r -> contentTypesProvided r >>= mapRes defaultCT >> return (Right D4)
+  where defaultCT :: [(MT.MediaType, IO LBS.ByteString)] -> ResourceMonad ()
+        defaultCT = modify . Resp.setChosenContentType . Just . fst . head
 
 decision C4 = decisionBranch isAcceptable
                              (Right D4)
