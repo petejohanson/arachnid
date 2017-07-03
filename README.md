@@ -8,11 +8,12 @@ This is a work-in-progress! It does *not* fully work. If it breaks, you get to k
 
 ## To Do
 
-* Change Resource methods to return `data ResourceResult = Error HTTP.Status | Halt HTTP.Status | Value a` so functions like `decisionBranch` can short-circuit!
 * Custom state flowing through decision tree
-* Response encoding
+* Response body encoding (e.g. gzip, deflate)
+* Response charsets
 * Better example(s)
 * Docs
+* Tracing support (return a header w/ the nodes we visited?)
 * Graceful shutdown in example?
 
 ### State monad for response data (headers, code, anything else?)
