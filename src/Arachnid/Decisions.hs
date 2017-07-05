@@ -473,8 +473,10 @@ acceptContent success res = do
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
 handle res req = fmap createResponse (runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse)
-   where decide node res = decision node res >>= processResult
-         processResult result = case result of -- I really want to use Either short circuiting via fmap/>>= here!
-                                  Right next -> decide next res
-                                  Left s     -> return s
+   where decide :: (Resource a) => DecisionNode -> a -> ResourceMonad HTTP.Status
+         decide node res = decision node res >>= processResult
+         -- I really want to use Either short circuiting via fmap/>>= here!
+         processResult :: DecisionResult -> ResourceMonad HTTP.Status
+         processResult (Right next) = decide next res
+         processResult (Left s) = return s
          createResponse (status, respData) = Wai.responseLBS status (Resp.responseHeaders respData) (fromMaybe LBS.empty (Resp.body respData))
