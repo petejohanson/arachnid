@@ -6,9 +6,9 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Test.Hspec
 import Arachnid.Resources
+import Arachnid.Request (Request, defaultRequest)
 import Arachnid.Response (ResponseData, emptyResponse)
 import Arachnid.Routing
-import Network.Wai
 
 data TestResource = TestResource deriving (Show)
 instance Resource TestResource

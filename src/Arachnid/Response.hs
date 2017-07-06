@@ -19,7 +19,6 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.List
 import Data.Maybe
 import qualified Network.HTTP.Types.Header as Header
-import qualified Network.HTTP.Types.Method as M
 import qualified Network.HTTP.Media as MT
 import Data.Time (UTCTime)
 import Arachnid.Internal.Date (formatHttpDate)

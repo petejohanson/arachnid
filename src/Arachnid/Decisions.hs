@@ -10,6 +10,7 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Resource
 import Arachnid.Resources
+import qualified Arachnid.Request as Req
 import qualified Arachnid.Response as Resp
 import Arachnid.Internal.Date (parseHttpDate)
 import Data.Char (ord)
@@ -132,10 +133,10 @@ findHeader :: Header.HeaderName -> [Header.Header] -> Maybe BS.ByteString
 findHeader hn hs = snd `fmap` find ((==hn) . fst) hs
 
 getHeader :: Header.HeaderName -> ResourceMonad (Maybe BS.ByteString)
-getHeader header = fmap (findHeader header) (asks Wai.requestHeaders)
+getHeader header = fmap (findHeader header) (asks Req.headers)
 
 getDateHeader :: Header.HeaderName -> ResourceMonad (Maybe UTCTime)
-getDateHeader header = fmap (findHeader header >=> parseHttpDate) (asks Wai.requestHeaders)
+getDateHeader header = fmap (findHeader header >=> parseHttpDate) (asks Req.headers)
 
 mapToDecision :: DecisionResult -> DecisionResult -> ResourceResult Bool -> DecisionResult
 mapToDecision pass fail check = check >>= (\p -> if p then pass else fail)
@@ -146,7 +147,7 @@ decisionBranch check t f res =
 
 decideIfHeader :: (Resource a) => Header.HeaderName -> (BS.ByteString -> DecisionResult) -> DecisionResult -> a -> ResourceMonad DecisionResult
 decideIfHeader header found missing res = do
-  h <- asks Wai.requestHeaders
+  h <- asks Req.headers
 
   case find ((==header) . fst) h of
     Just a -> return $ found (snd a)
@@ -167,7 +168,7 @@ decideIfDate found missing s =
     Just date -> found date
 
 decideIfMethod :: HTTP.Method -> DecisionResult -> DecisionResult -> ResourceMonad DecisionResult
-decideIfMethod method pass fail = ((==) <$> asks Wai.requestMethod <*> pure method) >>= (\p -> if p then return pass else return fail)
+decideIfMethod method pass fail = ((==) <$> asks Req.method <*> pure method) >>= (\p -> if p then return pass else return fail)
 
 parseETag :: BS.ByteString -> [BS.ByteString]
 parseETag = BS.split (fromIntegral $ ord ',')
@@ -214,14 +215,14 @@ decision B13 = decisionBranch serviceAvailable (Right B12) (Right A13)
 
 decision B12 = decisionBranch isKnownMethod (Right B11) (Right A12)
   where isKnownMethod :: (Resource a) => a -> ResourceMonadResult Bool
-        isKnownMethod res = (fmap . elem) <$> asks Wai.requestMethod <*> knownMethods res
+        isKnownMethod res = (fmap . elem) <$> asks Req.method <*> knownMethods res
 
 decision B11 = decisionBranch requestURITooLong (Right A11) (Right B10)
 
 -- TODO: This whole thing is messy. How better to add headers if not allowed?
 decision B10 = decisionBranch checkAllowed (Right B9) (Right A10)
   where reqMethod :: ResourceMonad HTTP.Method
-        reqMethod = asks Wai.requestMethod
+        reqMethod = asks Req.method
         handleAllowed :: ResourceResult [HTTP.Method] -> ResourceMonadResult Bool
         handleAllowed allowed =
           reqMethod >>= (\m -> addAllowedHeader allowed $ fmap (elem m) allowed)
@@ -247,7 +248,7 @@ decision B3 = decisionBranch isOptions (Right A3) (Right C3)
         addHeaders (Right hs) = fmap Right (modify $ Resp.addHeaders hs)
         addHeaders (Left l) = return $ Left l
         isOptions :: (Resource a) => a -> ResourceMonadResult Bool
-        isOptions res = (=="OPTIONS") <$> asks Wai.requestMethod >>= handleOptions res
+        isOptions res = (=="OPTIONS") <$> asks Req.method >>= handleOptions res
 
 decision C3 = decideIfHeader Header.hAccept (const $ Right C4) (Right C3a)
 decision C3a = \r -> contentTypesProvided r >>= mapRes defaultCT >> return (Right D4)
@@ -313,7 +314,7 @@ decision G11 = decideETagMatch Header.hIfMatch (Right H10) (Right H18)
 decision H6 = end HTTP.preconditionFailed412
 
 decision H7 = const $ do
-  h <- asks Wai.requestHeaders
+  h <- asks Req.headers
 
   case find (==(Header.hIfMatch, "*")) h of
     Nothing -> return $ Right I7
@@ -347,7 +348,7 @@ decision I13 = const $ fmap (Right . ifNoneMatchNodeMap . fromJust) (getHeader H
   where ifNoneMatchNodeMap "*" = J18
         ifNoneMatchNodeMap _   = K13
 
-decision J18 = const $ fmap (\m -> if m `elem` ["GET", "HEAD"] then Right L18 else Right H18) (asks Wai.requestMethod)
+decision J18 = const $ fmap (\m -> if m `elem` ["GET", "HEAD"] then Right L18 else Right H18) (asks Req.method)
 
 decision K4 = end HTTP.movedPermanently301
 
@@ -464,7 +465,7 @@ decision O21 = end HTTP.noContent204
 
 acceptContent :: (Resource a) => DecisionResult -> a -> ResourceMonad DecisionResult
 acceptContent success res = do
-  headers <- asks Wai.requestHeaders
+  headers <- asks Req.headers
   accepted <- contentTypesAccepted res
 
   case fmap snd  (find ((==Header.hContentType) . fst) headers) >>= MT.mapContent accepted of
@@ -472,7 +473,7 @@ acceptContent success res = do
     Just t -> fmap (mapToDecision success (Left HTTP.status500)) t
 
 handle :: forall a. (Resource a) => a -> Wai.Request -> ResourceT IO Wai.Response
-handle res req = fmap createResponse (runStateT (runReaderT (decide decisionStart res) req) Resp.emptyResponse)
+handle res req = fmap createResponse (runStateT (runReaderT (decide decisionStart res) (Req.fromWai req)) Resp.emptyResponse)
    where decide :: (Resource a) => DecisionNode -> a -> ResourceMonad HTTP.Status
          decide node res = decision node res >>= processResult
          -- I really want to use Either short circuiting via fmap/>>= here!

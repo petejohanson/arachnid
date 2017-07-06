@@ -34,11 +34,10 @@ module Arachnid.Resources
 , hasResponseBody
 , multipleChoices
 , allowMissingPost
-, Responsible
-, toResponse
 ) where
 
 import Arachnid.Response
+import qualified Arachnid.Request as Req
 
 import Data.Word
 import Data.Text
@@ -53,7 +52,7 @@ import qualified Network.Wai as Wai
 import qualified Network.HTTP.Types as HTTP
 import qualified Network.HTTP.Media as MT
 
-type ResourceMonad = ReaderT Wai.Request (StateT ResponseData (ResourceT IO))
+type ResourceMonad = ReaderT Req.Request (StateT ResponseData (ResourceT IO))
 
 type ResourceResult v = Either HTTP.Status v
 
@@ -157,11 +156,3 @@ class (Show a) => Resource a where
 
   allowMissingPost :: a -> ResourceMonadResult Bool
   allowMissingPost = const $ return (return False)
-
-class Responsible a where
-  toResponse :: a -> ResourceMonad Wai.Response
-
-instance Responsible HTTP.Status where
-  toResponse s =
-    return $ Wai.responseLBS s [("Content-Type", "text/plain")] "Hello World"
-
